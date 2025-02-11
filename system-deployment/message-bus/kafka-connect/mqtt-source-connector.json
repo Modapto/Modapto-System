@@ -1,0 +1,25 @@
+{
+    "name": "modapto-mqtt-source",
+    "config": {
+        "connector.class": "io.confluent.connect.mqtt.MqttSourceConnector",
+        "tasks.max": 1,
+        "mqtt.server.uri": "${env:MQTT_URL}",
+        "mqtt.username": "${env:MQTT_USER}",
+        "mqtt.password": "${env:MQTT_PASSWORD}",
+        "mqtt.connection.timeout": 30,
+        "mqtt.keep.alive": 60,
+        "mqtt.connection.clean": false,
+        "mqtt.clean.session.enabled": false,
+        "mqtt.topics": "self-awareness-diagnosis,self-awareness-detection,predictive-maintenance,process-drift,production-schedule-update,delivery-delay,smart-service-assignment,production-schema-registration,smart-service-completion,smart-service-event,modapto-module-creation",
+        "mqtt.kafka.topic.map": "self-awareness-diagnosis:self-awareness-diagnosis,self-awareness-detection:self-awareness-detection,predictive-maintenance:predictive-maintenance,process-drift:process-drift,production-schedule-update:production-schedule-update,delivery-delay:delivery-delay,smart-service-assignment:smart-service-assignment,production-schema-registration:production-schema-registration,smart-service-completion:smart-service-completion,smart-service-event:smart-service-event,modapto-module-creation:modapto-module-creation",
+        "kafka.topic": "modapto-mqtt-topics",
+        "mqtt.qos": 1,
+        "value.converter": "org.apache.kafka.connect.converters.ByteArrayConverter",
+        "value.converter.schemas.enable": false,
+        "topic.creation.enable": true,
+        "confluent.topic.bootstrap.servers": "${env:CONNECT_BOOTSTRAP_SERVERS}",
+        "confluent.topic.replication.factor": 1,
+        "topic.creation.default.replication.factor": 1,
+        "topic.creation.default.partitions": 6
+    }
+}

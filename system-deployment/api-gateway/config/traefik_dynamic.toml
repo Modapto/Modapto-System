@@ -1,0 +1,38 @@
+[http.middlewares.simpleAuth.basicAuth]
+  users = [
+    "[user]:[password]"
+  ]
+
+  [http.middlewares.security-headers]
+    [http.middlewares.security-headers.headers]
+      hostsProxyHeaders = ["X-Forwarded-Host"]
+      stsSeconds = 63072000
+      stsIncludeSubdomains = true
+      stsPreload = true
+      forceSTSHeader = true
+      frameDeny = true 
+      #customFrameOptionsValue = "allow-from https:example.com" #CSP takes care of this but may be needed for organizr. 
+      contentTypeNosniff = true 
+      browserXssFilter = true 
+      referrerpolicy = "same-origin" 
+      permissionsPolicy = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), vr=()"
+      [http.middlewares.security-headers.headers.customResponseHeaders]
+        server = ""
+  
+  [http.middlewares.cors.headers]
+    accessControlAllowMethods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    accessControlAllowOriginList = ["[comma-separated-CORS-enabled-URLs]"]
+    accessControlAllowHeaders = ["Accept", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization"]
+    accessControlAllowCredentials = true
+    accessControlMaxAge = 86400
+
+[http.routers.api]
+  rule = "Host(`[traefik-host-url]`)"
+  entrypoints = ["websecure"]
+  middlewares = ["simpleAuth", "security-headers", "cors"]
+  service = "api@internal"
+  [http.routers.api.tls]
+    certResolver = "lets-encrypt"
+
+[log]
+  level = "DEBUG"

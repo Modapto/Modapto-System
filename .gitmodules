@@ -1,0 +1,33 @@
+[submodule "user-interface"]
+	path = user-interface
+	url = https://github.com/Modapto/user-interface.git
+[submodule "digital-twin"]
+	path = digital-twin
+	url = https://github.com/Modapto/digital-twin.git
+[submodule "digital-twin-management"]
+	path = digital-twin-management
+	url = https://github.com/Modapto/digital-twin-management.git
+[submodule "access-control"]
+	path = access-control
+	url = https://github.com/Modapto/access-control.git
+[submodule "orchestrator"]
+	path = orchestrator
+	url = https://github.com/Modapto/orchestrator.git
+[submodule "notification-center"]
+	path = notification-center
+	url = https://github.com/Modapto/notification-center.git
+[submodule "evaluation-and-decision-support"]
+	path = evaluation-and-decision-support
+	url = https://github.com/Modapto/evaluation-and-decision-support.git
+[submodule "service-catalog"]
+	path = service-catalog
+	url = https://github.com/Modapto/service-catalog.git
+[submodule "production-knowledge-base"]
+	path = production-knowledge-base
+	url = https://github.com/Modapto/production-knowledge-base.git
+[submodule "api-gateway"]
+	path = api-gateway
+	url = https://github.com/Modapto/api-gateway.git
+[submodule "message-bus"]
+	path = message-bus
+	url = https://github.com/Modapto/message-bus.git

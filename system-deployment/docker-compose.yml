@@ -1,0 +1,738 @@
+services:
+  ###################################################
+  # API Gateway Component
+  ###################################################
+  traefik:
+    image: traefik:v2.9
+    container_name: traefik
+    profiles: ["proxy"]
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "9092:9092"
+      - "1883:1883"
+      - "8888:8888"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./api-gateway/config/traefik.toml:/traefik.toml
+      - ./api-gateway/config/traefik_dynamic.toml:/traefik_dynamic.toml
+      - ./api-gateway/certs/acme.json:/acme.json
+    networks:
+      - modapto
+    healthcheck:
+      test: ["CMD", "wget", "http://localhost:8888/ping"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+
+  ###################################################
+  # Access Control Component
+  ###################################################
+  postgres_db:
+    image: postgres:${POSTGRES_SERVER_VERSION}
+    container_name: postgres_db
+    restart: unless-stopped
+    shm_size: 128mb
+    env_file: .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - ${POSTGRES_EXPOSE_PORT}:${POSTGRES_SERVER_PORT}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 15s
+    networks:
+      - keycloak
+
+  keycloak:
+    image: bitnami/keycloak:${KEYCLOAK_SERVER_VERSION}
+    container_name: keycloak
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - KEYCLOAK_ADMIN_USER=${KEYCLOAK_ADMIN_USER}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+      - KEYCLOAK_DATABASE_VENDOR=${KEYCLOAK_DB_VENDOR}
+      - KEYCLOAK_DATABASE_HOST=${KEYCLOAK_DB_HOST}
+      - KEYCLOAK_DATABASE_PORT=${KEYCLOAK_DB_PORT}
+      - KEYCLOAK_DATABASE_NAME=${KEYCLOAK_DB_DATABASE}
+      - KEYCLOAK_DATABASE_USER=${KEYCLOAK_DB_USER}
+      - KEYCLOAK_DATABASE_PASSWORD=${KEYCLOAK_DB_PASS}
+      - KEYCLOAK_DB_URL=jdbc:${KEYCLOAK_DB_VENDOR}://postgres_db:${KEYCLOAK_DB_PORT}/${KEYCLOAK_DB_DATABASE}
+      - KEYCLOAK_PROXY_MODE=edge
+      - KEYCLOAK_HTTP_PORT=${KEYCLOAK_SERVER_PORT}
+      - KEYCLOAK_HOSTNAME=${KEYCLOAK_GATEWAY_URL}
+      - KEYCLOAK_HOSTNAME_STRICT=true
+      - KEYCLOAK_EXTRA_ARGS= --proxy-headers xforwarded --import-realm
+    ports:
+      - ${KEYCLOAK_EXPOSE_PORT}:${KEYCLOAK_SERVER_PORT}
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.keycloak=true
+      - traefik.http.routers.keycloak.rule=Host(`${KEYCLOAK_GATEWAY_URL}`)
+      - traefik.http.routers.keycloak.tls=true
+      - traefik.http.routers.keycloak.tls.certresolver=lets-encrypt
+      - traefik.http.middlewares.securityHeader.headers.sslredirect=true
+      - traefik.http.routers.keycloak.middlewares=securityHeader
+      - traefik.http.services.keycloak.loadbalancer.server.port=${KEYCLOAK_SERVER_PORT}
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent ${KEYCLOAK_ISSUER_TEST_URI} || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+    volumes:
+      - ./access-control/keycloak-config/:/opt/bitnami/keycloak/data/import
+    networks:
+      - modapto
+      - keycloak
+
+  user-manager:
+    image: ${AC_APP_IMAGE}
+    container_name: user-manager
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - SERVER_PORT=${AC_APP_PORT}
+      - KC_URL=${KEYCLOAK_URL}
+      - KC_ISSUER_URI=${KEYCLOAK_ISSUER_URI}
+      - KC_JWK_SET_URI=${KEYCLOAK_JWK_SET_URI}
+      - KC_TOKEN_URI=${KEYCLOAK_TOKEN_URI}
+      - KC_ADMIN_URI=${KEYCLOAK_ADMIN_URI}
+      - KC_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
+      - KC_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
+      - KC_ADMIN_USERNAME=${KEYCLOAK_ADMIN_USERNAME}
+      - KC_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+      - KC_REALM=${KEYCLOAK_REALM}
+      - KC_AUTH_SERVER=${KEYCLOAK_AUTH_SERVER}
+      - GMAIL_USERNAME=${MAIL_USERNAME}
+      - GMAIL_APP_PASSWORD=${MAIL_PASSWORD}
+      - APP_FRONTEND_URL=${FRONTEND_URL}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.user-manager=true
+      - traefik.http.routers.user-manager.rule=Host(`${SERVICES_GATEWAY_URL}`) && (PathPrefix(`/api/users`) || PathPrefix(`/api/user-manager`) || PathPrefix(`/api/admin`))
+      - traefik.http.routers.user-manager.tls=true
+      - traefik.http.routers.user-manager.tls.certresolver=lets-encrypt
+      - traefik.http.middlewares.securityHeader.headers.sslredirect=true
+      - traefik.http.routers.user-manager.middlewares=securityHeader
+      - traefik.http.services.user-manager.loadbalancer.server.port=${AC_APP_PORT}
+    ports:
+      - ${AC_APP_PORT}:${AC_APP_PORT}
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    networks:
+      - modapto
+      - keycloak
+
+  ###################################################
+  # Production Knowledge Base Component
+  ###################################################
+  setup:
+    container_name: elasticsearch-setup
+    profiles:
+      - setup
+    build:
+      context: ./production-knowledge-base/
+      dockerfile: ./setup/Dockerfile
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    init: true
+    volumes:
+      - ./production-knowledge-base/setup/entrypoint.sh:/entrypoint.sh:ro,Z
+      - ./production-knowledge-base/setup/lib.sh:/lib.sh:ro,Z
+      - ./production-knowledge-base/setup/roles:/roles:ro,Z
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
+      LOGSTASH_INTERNAL_PASSWORD: ${LOGSTASH_INTERNAL_PASSWORD:-}
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-}
+      METRICBEAT_INTERNAL_PASSWORD: ${METRICBEAT_INTERNAL_PASSWORD:-}
+      FILEBEAT_INTERNAL_PASSWORD: ${FILEBEAT_INTERNAL_PASSWORD:-}
+      HEARTBEAT_INTERNAL_PASSWORD: ${HEARTBEAT_INTERNAL_PASSWORD:-}
+      MONITORING_INTERNAL_PASSWORD: ${MONITORING_INTERNAL_PASSWORD:-}
+      BEATS_SYSTEM_PASSWORD: ${BEATS_SYSTEM_PASSWORD:-}
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+
+  elasticsearch:
+    container_name: elasticsearch
+    build:
+      context: ./production-knowledge-base/
+      dockerfile: ./elasticsearch/Dockerfile
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    volumes:
+      - ./production-knowledge-base/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro,Z
+      - elasticsearch:/usr/share/elasticsearch/data:Z
+    ports:
+      - 9200:9200
+      - 9300:9300
+    environment:
+      node.name: elasticsearch
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
+      discovery.type: single-node
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs -u ${ELASTIC_USERNAME}:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health?wait_for_status=yellow || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - elk
+      - modapto
+    restart: unless-stopped
+
+  logstash:
+    container_name: logstash
+    build:
+      context: ./production-knowledge-base/
+      dockerfile: ./logstash/Dockerfile
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    volumes:
+      - ./production-knowledge-base/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro,Z
+      - ./production-knowledge-base/logstash/pipeline:/usr/share/logstash/pipeline:ro,Z
+    ports:
+      - 5044:5044
+      - 50000:50000/tcp
+      - 50000:50000/udp
+      - 9600:9600
+    environment:
+      LS_JAVA_OPTS: -Xms256m -Xmx256m
+      LOGSTASH_INTERNAL_PASSWORD: ${LOGSTASH_INTERNAL_PASSWORD:-}
+      ELASTIC_USERNAME: ${ELASTIC_USERNAME}
+      MESSAGE_BUS_KAFKA_URL: kafka:${KAFKA_EXTERNAL_PORT}
+      ELASTICSEARCH_URL: ${ELASTICSEARCH_URL}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.logstash=true
+      - traefik.http.routers.logstash.rule=Host(`${LOGSTASH_GATEWAY_URL}`)
+      - traefik.http.routers.logstash.tls=true
+      - traefik.http.routers.logstash.tls.certresolver=lets-encrypt
+      - traefik.http.middlewares.securityHeader.headers.sslredirect=true
+      - traefik.http.routers.logstash.middlewares=securityHeader
+      - traefik.http.services.logstash.loadbalancer.server.port=9600
+    networks:
+      - elk
+      - modapto
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  kibana:
+    container_name: kibana
+    build:
+      context: ./production-knowledge-base/
+      dockerfile: ./kibana/Dockerfile
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    volumes:
+      -  ./production-knowledge-base/kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro,Z
+    ports:
+      - 5601:5601
+    environment:
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.kibana=true
+      - traefik.http.routers.kibana.rule=Host(`${KIBANA_GATEWAY_URL}`)
+      - traefik.http.routers.kibana.tls=true
+      - traefik.http.routers.kibana.tls.certresolver=lets-encrypt
+      - traefik.http.middlewares.securityHeader.headers.sslredirect=true
+      - traefik.http.routers.kibana.middlewares=securityHeader
+      - traefik.http.services.kibana.loadbalancer.server.port=5601
+    networks:
+      - elk
+      - modapto
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ###################################################
+  # Notification Center Component
+  ###################################################
+  notification-center:
+    image: ${NC_APP_IMAGE}
+    container_name: notification-center
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - SERVER_PORT=${NC_APP_PORT}
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
+      - ELASTIC_USERNAME=${ELASTIC_USERNAME}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - KEYCLOAK_REALM_URL=${KEYCLOAK_ISSUER_URI}
+      - KEYCLOAK_CLIENT=${KEYCLOAK_CLIENT_ID}
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
+      - USER_MANAGER_URL=http://user-manager:${AC_APP_PORT}
+      - KAFKA_BROKERS_URL=kafka:${KAFKA_EXTERNAL_PORT}
+      - KAFKA_TOPICS=${KAFKA_SUB_TOPICS}
+    ports:
+      - ${NC_APP_PORT}:${NC_APP_PORT}
+    labels:
+        - traefik.enable=true
+        - traefik.http.routers.notification-center=true
+        - traefik.http.routers.notification-center.rule=Host(`${SERVICES_GATEWAY_URL}`) && (PathPrefix(`/api/events`) || PathPrefix(`/api/notification-center`) || PathPrefix(`/api/assignments`) || PathPrefix(`/api/notifications`))
+        - traefik.http.routers.notification-center.tls=true
+        - traefik.http.routers.notification-center.tls.certresolver=lets-encrypt
+        - traefik.http.middlewares.securityHeader.headers.sslredirect=true
+        - traefik.http.routers.notification-center.middlewares=securityHeader
+        - traefik.http.services.notification-center.loadbalancer.server.port=${NC_APP_PORT}
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      kafka-setup:
+        condition: service_completed_successfully
+    networks:
+      - modapto
+
+  ###################################################
+  # User Interface Component
+  ###################################################
+  user-interface:
+    image: ${UI_APP_IMAGE}
+    container_name: user-interface
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - ${UI_APP_PORT}:80
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.user-interface=true
+      - traefik.http.routers.user-interface.rule=Host(`${DASHBOARD_GATEWAY_URL}`)
+      - traefik.http.routers.user-interface.tls=true
+      - traefik.http.routers.user-interface.tls.certresolver=lets-encrypt
+      - traefik.http.middlewares.securityHeader.headers.sslredirect=true
+      - traefik.http.routers.user-interface.middlewares=securityHeader
+      - traefik.http.services.user-interface.loadbalancer.server.port=80
+    networks:
+      - modapto
+
+  ###################################################
+  # Service Catalogue - Orchestrator Components
+  ###################################################
+  orchestrator-with-service-catalogue:
+    image: ${OSC_APP_IMAGE}
+    container_name: orchestrator-with-service-catalogue
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - msc-data:/opt/msc-data/
+    ports:
+      - ${OSC_APP_PORT}:8080
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.orchestrator-with-service-catalogue=true
+      - traefik.http.routers.orchestrator-with-service-catalogue.rule=Host(`${SERVICES_GATEWAY_URL}`) && (PathPrefix(`/micro-service-controller-rest`) || PathPrefix(`/catalog`))
+      - traefik.http.routers.orchestrator-with-service-catalogue.tls=true
+      - traefik.http.routers.orchestrator-with-service-catalogue.tls.certresolver=lets-encrypt
+      - traefik.http.middlewares.securityHeader.headers.sslredirect=true
+      - traefik.http.routers.orchestrator-with-service-catalogue.middlewares=securityHeader
+      - traefik.http.services.orchestrator-with-service-catalogue.loadbalancer.server.port=8080
+    networks:
+      - modapto
+
+  ###################################################
+  # DT Management Component
+  ###################################################
+  digital-twin-management:
+    image: ${DTM_APP_IMAGE}
+    container_name: digital-twin-management
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - SERVICE_CATALOG_URL=http://orchestrator-with-service-catalogue:8080
+      - MESSAGEBUS_KAFKA_URL=kafka:${KAFKA_EXTERNAL_PORT}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DT_DOCKER_REGISTRY_URL=${CONTAINER_REGISTRY}
+      - DT_DOCKER_REGISTRY_USERNAME=${CONTAINER_REGISTRY_USERNAME}
+      - DT_DOCKER_REGISTRY_PASSWORD=${CONTAINER_REGISTRY_PASSWORD}
+      - DT_DOCKER_IMAGE=${DT_APP_IMAGE}
+      - INTERNAL_SERVICE_DOCKER_REGISTRY_URL=${CONTAINER_REGISTRY}
+      - INTERNAL_SERVICE_DOCKER_REGISTRY_USERNAME=${CONTAINER_REGISTRY_USERNAME}
+      - INTERNAL_SERVICE_DOCKER_REGISTRY_PASSWORD=${CONTAINER_REGISTRY_PASSWORD}
+      - DTM_KAFKA_QUEUE_SIZE=100
+      - DTM_KAFKA_THREAD_COUNT=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - ${DTM_APP_PORT}:8080
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.digital-twin-management=true
+      - traefik.http.routers.digital-twin-management.rule=Host(`${DIGITAL_TWIN_GATEWAY_URL}`)
+      - traefik.http.routers.digital-twin-management.tls=true
+      - traefik.http.routers.digital-twin-management.tls.certresolver=lets-encrypt
+      - traefik.http.middlewares.securityHeader.headers.sslredirect=true
+      - traefik.http.routers.digital-twin-management.middlewares=securityHeader
+      - traefik.http.services.digital-twinv.loadbalancer.server.port=8080
+    networks:
+      - modapto
+
+  ###################################################
+  # Evaluation Decision Support Component
+  ###################################################
+  eds-frontend:
+    image: stellamarkop/eds:evaluation0
+    restart: unless-stopped
+    container_name: eds-frontend
+    ports:
+      - "80"
+    environment:
+      - SERV_HOST=https://${SERVICES_GATEWAY_URL}
+      - SOCKET_HOST=https://fvt.modapto.atc.gr #server base IP for Socket.io; adjust the IP url according your host environment. Server runs under nginx proxy pass(thats why port is 4200)- we have configured in Angular to request Socket under /server subdomain.
+      - KEYCLOAK_URL=https://fvt.aegisresearch.eu
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.eds-frontend=true
+      - traefik.http.routers.eds-frontend.rule=Host(`fvt.modapto.atc.gr`)
+      - traefik.http.routers.eds-frontend.tls=true
+      - traefik.http.routers.eds-frontend.tls.certresolver=lets-encrypt
+      - traefik.http.middlewares.securityHeader.headers.sslredirect=true
+      - traefik.http.routers.eds-frontend.middlewares=securityHeader
+      - traefik.http.services.eds-frontend.loadbalancer.server.port=80
+    depends_on:
+      eds-backend:
+        condition: service_started
+    networks:
+      - modapto
+
+  eds-backend:
+    image: ${EDS_APP_IMAGE}
+    container_name: eds-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - SERVER_PORT=${EDS_APP_PORT}
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
+      - ELASTICSEARCH_USER=${ELASTIC_USERNAME}
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+    ports:
+      - ${EDS_APP_PORT}:${EDS_APP_PORT}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.eds-backend=true
+      - traefik.http.routers.eds-backend.rule=Host(`${SERVICES_GATEWAY_URL}`) && PathPrefix(`/api/eds`)
+      - traefik.http.routers.eds-backend.tls=true
+      - traefik.http.routers.eds-backend.tls.certresolver=lets-encrypt
+      - traefik.http.middlewares.securityHeader.headers.sslredirect=true
+      - traefik.http.routers.eds-backend.middlewares=securityHeader
+      - traefik.http.services.eds-backend.loadbalancer.server.port=${EDS_APP_PORT}
+    networks:
+      - modapto
+
+  ###################################################
+  # Message Bus Component
+  ###################################################
+  kafka:
+    image: confluentinc/cp-kafka:${KAFKA_IMAGE_VERSION}
+    build: .
+    hostname: kafka
+    container_name: kafka
+    restart: unless-stopped
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+      - kafka-config:/etc/kafka
+      - kafka-schemas:/etc/schema-registry
+    ports:
+      - "29092:29092"
+      - "9101:9101"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:${KAFKA_INTERNAL_PORT},PLAINTEXT_HOST://${KAFKA_GATEWAY_URL}:${KAFKA_EXTERNAL_PORT}'
+      KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: 'kafka:${KAFKA_EXTERNAL_PORT}'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:${KAFKA_CONTROLLER_PORT}'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka:${KAFKA_INTERNAL_PORT},CONTROLLER://kafka:${KAFKA_CONTROLLER_PORT},PLAINTEXT_HOST://:${KAFKA_EXTERNAL_PORT}'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+    labels:
+      - traefik.enable=true
+      - traefik.tcp.routers.kafka.rule=HostSNI(`${KAFKA_GATEWAY_URL}`)
+      - traefik.tcp.routers.kafka.entrypoints=kafka
+      - traefik.tcp.routers.kafka.tls=true
+      - traefik.tcp.routers.kafka.tls.certresolver=lets-encrypt
+      - traefik.tcp.services.kafka.loadbalancer.server.port=${KAFKA_EXTERNAL_PORT}
+    healthcheck:
+      test: kafka-topics --bootstrap-server=kafka:${KAFKA_INTERNAL_PORT} --list || exit 1
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 15s
+    networks:
+      - kafka
+      - modapto
+
+  # Kafka UI Component
+  kafka-ui:
+    container_name: kafka-ui
+    image: provectuslabs/kafka-ui:latest
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - ${KAFKA_UI_EXTERNAL_PORT}:8080
+    environment:
+      DYNAMIC_CONFIG_ENABLED: 'true'
+      KAFKA_CLUSTERS_0_NAME: MODAPTO Message Bus
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: 'kafka:${KAFKA_INTERNAL_PORT}'
+      KAFKA_CLUSTERS_0_METRICS_PORT: 9101
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:${SR_EXTERNAL_PORT}
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRYAUTH_USERNAME: ${SR_USERNAME}
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRYAUTH_PASSWORD: ${SR_PASSWORD}
+      AUTH_TYPE: "LOGIN_FORM"
+      SPRING_SECURITY_USER_NAME: ${KAFKA_UI_USERNAME}
+      SPRING_SECURITY_USER_PASSWORD: ${KAFKA_UI_PASSWORD}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.kafka-ui=true
+      - traefik.http.routers.kafka-ui.rule=Host(`${KAFKA_UI_GATEWAY_URL}`)
+      - traefik.http.routers.kafka-ui.tls=true
+      - traefik.http.routers.kafka-ui.tls.certresolver=lets-encrypt
+      - traefik.http.middlewares.securityHeader.headers.sslredirect=true
+      - traefik.http.routers.kafka-ui.middlewares=securityHeader
+      - traefik.http.services.kafka-ui.loadbalancer.server.port=8080
+    depends_on:
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_started
+    networks:
+      - modapto
+      - kafka
+
+  # Kafka Rest Proxy to handle HTTP Requests
+  rest-proxy:
+    image: confluentinc/cp-kafka-rest:${KAFKA_IMAGE_VERSION}
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - ${RP_EXTERNAL_PORT}:${RP_EXTERNAL_PORT}
+    hostname: rest-proxy
+    container_name: rest-proxy
+    environment:
+      KAFKA_REST_HOST_NAME: rest-proxy
+      KAFKA_REST_BOOTSTRAP_SERVERS: 'PLAINTEXT://kafka:${KAFKA_INTERNAL_PORT}'
+      KAFKA_REST_LISTENERS: ${RP_LISTENERS}
+      KAFKA_REST_SCHEMA_REGISTRY_URL: "http://schema-registry:${SR_EXTERNAL_PORT}"
+      KAFKA_REST_ACCESS_CONTROL_ALLOW_ORIGIN: "*"
+      KAFKA_REST_ACCESS_CONTROL_ALLOW_METHODS: "GET,POST,PUT,DELETE,OPTIONS"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.rest-proxy=true
+      - traefik.http.routers.rest-proxy.rule=Host(`${KAFKA_RP_GATEWAY_URL}`)
+      - traefik.http.routers.rest-proxy.tls=true
+      - traefik.http.routers.rest-proxy.tls.certresolver=lets-encrypt
+      - traefik.http.middlewares.securityHeader.headers.sslredirect=true
+      - traefik.http.routers.rest-proxy.middlewares=securityHeader
+      - traefik.http.services.rest-proxy.loadbalancer.server.port=${RP_EXTERNAL_PORT}
+    networks:
+      - modapto
+      - kafka
+
+  # Kafka image for Schema Registry of Messages
+  schema-registry:
+    image: confluentinc/cp-schema-registry:${KAFKA_IMAGE_VERSION}
+    hostname: schema-registry
+    container_name: schema-registry
+    env_file: .env
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "${SR_EXTERNAL_PORT}:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: ${SR_LISTENERS}
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka:${KAFKA_INTERNAL_PORT}'
+      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: PLAINTEXT
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas
+      SCHEMA_REGISTRY_OPTS: -Djava.security.auth.login.config=/conf/schema_registry.jaas
+      SCHEMA_REGISTRY_SCHEMA_REGISTRY_INTER_INSTANCE_PROTOCOL: "http"
+      SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: INFO
+    networks:
+      - kafka
+      - modapto
+
+  # Initial Topics Setup
+  kafka-setup:
+    image: confluentinc/cp-kafka:${KAFKA_IMAGE_VERSION}
+    hostname: kafka-setup
+    container_name: kafka-setup
+    env_file: .env
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes: # Change the topics / Kafka Broker URL inside the script
+      - ./message-bus/scripts/kafka-init-topics-single-broker.sh:/usr/local/bin/kafka-init-topics.sh
+    environment:
+      KAFKA_NODE_ID: 10
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'PLAINTEXT:PLAINTEXT, CONTROLLER:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-setup:29092'
+      KAFKA_PROCESS_ROLES: 'broker'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka-setup:29092'
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    restart: no
+    command: |
+      bash -c '
+        /usr/local/bin/kafka-init-topics.sh
+      '
+    networks:
+      - kafka
+      - modapto
+
+  # Kafka Connector to support MQTT configuration
+  kafka-connect:
+    image: confluentinc/cp-kafka-connect:${KAFKA_IMAGE_VERSION}
+    hostname: kafka-connect
+    restart: unless-stopped
+    container_name: kafka-connect
+    ports:
+      - "${KC_EXTERNAL_PORT}:${KC_EXTERNAL_PORT}"
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: kafka:${KAFKA_INTERNAL_PORT}
+      CONNECT_PRODUCER_BOOTSTRAP_SERVERS: kafka:${KAFKA_INTERNAL_PORT}
+      CONNECT_CONSUMER_BOOTSTRAP_SERVERS: kafka:${KAFKA_INTERNAL_PORT}
+      CONNECT_PRODUCER_SECURITY_PROTOCOL: PLAINTEXT
+      CONNECT_CONSUMER_SECURITY_PROTOCOL: PLAINTEXT
+      CONNECT_REST_ADVERTISED_HOST_NAME: localhost
+      CONNECT_REST_PORT: ${KC_EXTERNAL_PORT}
+      CONNECT_GROUP_ID: modapto-mqtt-connector
+      CONNECT_CONFIG_STORAGE_TOPIC: modapto-kafka-connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: modapto-kafka-connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: modapto-kafka-connect-status
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.storage.StringConverter"
+      CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_CONFLUENT_TOPIC_REPLICATION_FACTOR: 1
+      CONNECT_TOPIC_CREATION_ENABLE: 'true'
+      CONNECT_TOPIC_CREATION_DEFAULT_PARTITIONS: 6
+      CONNECT_TOPIC_CREATION_DEFAULT_REPLICATION_FACTOR: 1
+      CONNECT_PLUGIN_PATH: '/usr/share/java,/usr/share/confluent-hub-components'
+      CONNECT_CONFIG_PROVIDERS: 'env'
+      CONNECT_CONFIG_PROVIDERS_ENV_CLASS: 'org.apache.kafka.common.config.provider.EnvVarConfigProvider'
+      MQTT_USER: ${MQTT_USER}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
+      MQTT_URL: tcp://mosquitto:1883
+    volumes:
+      - ./message-bus/kafka-connect/mqtt-source-connector.json:/etc/kafka-connect/mqtt-source-connector.json
+      - kafka_connect_plugins:/usr/share/confluent-hub-components
+    networks:
+      - kafka
+      - modapto
+    depends_on:
+      kafka:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+    command:
+      - bash
+      - -c
+      - |
+        echo "Installing MQTT Connector"
+        confluent-hub install --no-prompt confluentinc/kafka-connect-mqtt:latest
+        #
+        echo "Launching Kafka Connect worker"
+        /etc/confluent/docker/run &
+        sleep 10
+        #
+        echo "Waiting for Kafka Connect to be ready..."
+        while ! curl -s -f http://localhost:${KC_EXTERNAL_PORT}/connector-plugins > /dev/null; do
+          echo "Waiting for Kafka Connect to start..."
+          sleep 5
+        done
+
+        echo "Creating the MQTT connector:"
+        curl -v -X POST http://localhost:${KC_EXTERNAL_PORT}/connectors \
+          -H "Content-Type: application/json; charset=UTF-8" \
+          --data-binary "@/etc/kafka-connect/mqtt-source-connector.json"
+
+        sleep infinity
+
+  # MQTT configuration
+  mosquitto:
+    image: eclipse-mosquitto:${MQTT_IMAGE_VERSION}
+    container_name: mosquitto
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MOSQUITTO_USERNAME=${MQTT_USER}
+      - MOSQUITTO_PASSWORD=${MQTT_PASSWORD}
+    volumes:
+      - ./message-bus/mqtt/config:/mosquitto/config
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 5 mosquitto_sub -t 'test-topic' -u ${MQTT_USER} -P ${MQTT_PASSWORD} -E -v 2>&1 || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    command: >
+      sh -c "mosquitto_passwd -b /mosquitto/config/passwd $MQTT_USER $MQTT_PASSWORD && exec /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf"
+    labels:
+      - traefik.enable=true
+      - traefik.tcp.routers.mosquitto.rule=HostSNI(`${MQTT_GATEWAY_URL}`)
+      - traefik.tcp.routers.mosquitto.entrypoints=mqtt
+      - traefik.tcp.routers.mosquitto.tls=true
+      - traefik.tcp.routers.mosquitto.tls.certresolver=lets-encrypt
+      - traefik.tcp.services.mosquitto.loadbalancer.server.port=${MQTT_PORT}
+    networks:
+      - kafka
+      - modapto
+
+volumes:
+  postgres_data:
+  elasticsearch:
+  mosquitto_data:
+  mosquitto_log:
+  kafka-data:
+  kafka-config:
+  kafka-schemas:
+  kafka_connect_plugins:
+  msc-data:
+    
+networks:
+  keycloak:
+    driver: bridge
+  modapto:
+    external: true
+  elk:
+    driver: bridge
+  kafka:
+    driver: bridge

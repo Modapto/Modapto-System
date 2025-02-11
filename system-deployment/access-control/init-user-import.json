@@ -1,0 +1,36 @@
+{
+  "realm" : "modapto-system",
+  "users" : [{
+    "id" : "a918b329-6111-4a4d-b928-3780b638aa07",
+    "username" : "super_admin",
+    "firstName" : "Admin",
+    "lastName" : "Super",
+    "email" : "superadmin@modapto.eu",
+    "emailVerified" : true,
+    "attributes" : {
+      "pilot_role" : [ "SUPER_ADMIN" ],
+      "pilot_code" : [ "ALL" ],
+      "user_role" : [ "SUPER_ADMIN" ]
+    },
+    "createdTimestamp" : 1719578064439,
+    "enabled" : true,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "06abb7a7-f257-486c-93db-21079baf45d9",
+      "type" : "password",
+      "userLabel" : "My password",
+      "createdDate" : 1726564938631,
+      "secretData" : "{\"value\":\"cucbVjCF83VmKT7aK1j/15AE8sGpCn9EyzX9aFspzOx6V9R5QI9UnlVnkYW+pghjNE4DdwvjjEL0TfdRS7xtgQ==\",\"salt\":\"mKO2kvOBx8yGjKba6vm2ug==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"additionalParameters\":{}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "SUPER_ADMIN", "default-roles-modapto-system" ],
+    "clientRoles" : {
+      "realm-management" : [ "query-realms", "manage-realm", "manage-clients", "realm-admin", "manage-users", "query-users", "manage-authorization", "view-identity-providers", "view-users", "query-clients", "view-clients", "query-groups", "view-events", "view-authorization", "view-realm" ],
+      "modapto" : [ "SUPER_ADMIN" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  }]
+}
