@@ -44,6 +44,15 @@ MODAPTO is configured and wrapped in such way to minimize deployment configurati
   - In file ***traefik.toml*** users shall insert an email address in the specified field.
   - In file ***traefik_dynamic.toml*** users shall configure the URL of Traefik UI and set up the available URLs that will be successfully routed through CORS. Can also be set to enable requests from all URLs (*).
 
+It is important to initially set the username/password for the Traefik UI. To do so, you need to inject into ***traefik_dynamic.toml*** a hashed password. For generating the combination of username:password run the following command in the terminal:
+
+```sh
+# Generate a hashed password using htpasswd
+htpasswd -nb [user] [password]
+```
+
+Copy the generated hashed value and add it under the ***[hostPath]*** field in the ***traefik_dynamic.toml***.
+
 **NOTE:** If user's change some further environment variables in ***.env*** file, then other changes might be needed to the rest configuration files.
 
 ## Deployment
