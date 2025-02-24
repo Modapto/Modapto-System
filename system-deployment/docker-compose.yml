@@ -10,8 +10,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "9092:9092"
-      - "1883:1883"
+      - "${KAFKA_EXTERNAL_PORT}:${KAFKA_EXTERNAL_PORT}"
+      - "${MQTT_PORT}:${MQTT_PORT}"
       - "8888:8888"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -48,7 +48,7 @@ services:
       interval: 5s
       timeout: 10s
       retries: 20
-      start_period: 15s
+      start_period: 10s
     networks:
       - keycloak
 
@@ -215,7 +215,7 @@ services:
       LS_JAVA_OPTS: -Xms256m -Xmx256m
       LOGSTASH_INTERNAL_PASSWORD: ${LOGSTASH_INTERNAL_PASSWORD:-}
       ELASTIC_USERNAME: ${ELASTIC_USERNAME}
-      MESSAGE_BUS_KAFKA_URL: kafka:${KAFKA_EXTERNAL_PORT}
+      MESSAGE_BUS_KAFKA_URL: kafka:${KAFKA_INTERNAL_PORT}
       ELASTICSEARCH_URL: ${ELASTICSEARCH_URL}
     labels:
       - traefik.enable=true
@@ -281,8 +281,8 @@ services:
       - KEYCLOAK_CLIENT=${KEYCLOAK_CLIENT_ID}
       - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
       - USER_MANAGER_URL=http://user-manager:${AC_APP_PORT}
-      - KAFKA_BROKERS_URL=kafka:${KAFKA_EXTERNAL_PORT}
-      - KAFKA_TOPICS=${KAFKA_SUB_TOPICS}
+      - KAFKA_BROKERS_URL=kafka:${KAFKA_INTERNAL_PORT}
+      - KAFKA_TOPICS=${KAFKA_MODAPTO_TOPICS}
     ports:
       - ${NC_APP_PORT}:${NC_APP_PORT}
     labels:
@@ -358,9 +358,24 @@ services:
     container_name: digital-twin-management
     restart: unless-stopped
     env_file: .env
+    privileged: true
     environment:
+      - SPRING_H2_CONSOLE_ENABLED=false
+      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
+      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://dtm-postgres-db:${POSTGRES_SERVER_PORT}/${DTM_POSTGRES_DB}
+      - SPRING_DATASOURCE_USERNAME=${DTM_POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${DTM_POSTGRES_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - logging.level.org.postgresql=INFO
+      - dt-management.deployment.type=DOCKER
+      - DT_DEFAULT_DEPLOYMENT_TYPE=DOCKER
+      - logging.level.root=INFO
+      - DTM_EVENTS_MQTT_HOST=0.0.0.0
+      - DTM_EVENTS_MQTT_PORT=1873
+      - DT_MOUNT_DIR=/tmp/modapto/dtm/data
       - SERVICE_CATALOG_URL=http://orchestrator-with-service-catalogue:8080
-      - MESSAGEBUS_KAFKA_URL=kafka:${KAFKA_EXTERNAL_PORT}
+      - MESSAGEBUS_KAFKA_URL=kafka:${KAFKA_INTERNAL_PORT}
       - DOCKER_HOST=unix:///var/run/docker.sock
       - DT_DOCKER_REGISTRY_URL=${CONTAINER_REGISTRY}
       - DT_DOCKER_REGISTRY_USERNAME=${CONTAINER_REGISTRY_USERNAME}
@@ -371,10 +386,15 @@ services:
       - INTERNAL_SERVICE_DOCKER_REGISTRY_PASSWORD=${CONTAINER_REGISTRY_PASSWORD}
       - DTM_KAFKA_QUEUE_SIZE=100
       - DTM_KAFKA_THREAD_COUNT=1
+      - LOGGING_LEVEL_ROOT=trace
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - "/tmp/modapto/dtm/data:/tmp/dt-context"
+      - ./dt-management/postgresql-42.7.5.jar:/app/postgresql-42.7.5.jar
+    entrypoint: ["java", "-cp", "/app/app.jar:/app/postgresql-42.7.5.jar", "org.springframework.boot.loader.launch.JarLauncher"]
     ports:
       - ${DTM_APP_PORT}:8080
+      - ${DTM_BUS_EXTERNAL_PORT}:1873
     labels:
       - traefik.enable=true
       - traefik.http.routers.digital-twin-management=true
@@ -384,8 +404,35 @@ services:
       - traefik.http.middlewares.securityHeader.headers.sslredirect=true
       - traefik.http.routers.digital-twin-management.middlewares=securityHeader
       - traefik.http.services.digital-twinv.loadbalancer.server.port=8080
+    depends_on:
+      dtm-postgres-db:
+        condition: service_healthy
     networks:
       - modapto
+      - digital-twin
+
+  dtm-postgres-db:
+    image: postgres:${POSTGRES_SERVER_VERSION}
+    container_name: dtm-postgres-db
+    restart: unless-stopped
+    shm_size: 128mb
+    env_file: .env
+    environment:
+      POSTGRES_DB: ${DTM_POSTGRES_DB}
+      POSTGRES_USER: ${DTM_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${DTM_POSTGRES_PASSWORD}
+    volumes:
+      - dtm-data:/var/lib/postgresql/data
+    ports:
+      - ${DTM_POSTGRES_EXPOSE_PORT}:${POSTGRES_SERVER_PORT}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DTM_POSTGRES_USER} -d ${DTM_POSTGRES_DB}"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+    networks:
+      - digital-twin
 
   ###################################################
   # Evaluation Decision Support Component
@@ -453,7 +500,7 @@ services:
       - kafka-config:/etc/kafka
       - kafka-schemas:/etc/schema-registry
     ports:
-      - "29092:29092"
+      - "${KAFKA_INTERNAL_PORT}:${KAFKA_INTERNAL_PORT}"
       - "9101:9101"
     environment:
       KAFKA_NODE_ID: 1
@@ -469,17 +516,15 @@ services:
       KAFKA_PROCESS_ROLES: 'broker,controller'
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:${KAFKA_CONTROLLER_PORT}'
-      KAFKA_LISTENERS: 'PLAINTEXT://kafka:${KAFKA_INTERNAL_PORT},CONTROLLER://kafka:${KAFKA_CONTROLLER_PORT},PLAINTEXT_HOST://:${KAFKA_EXTERNAL_PORT}'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka:${KAFKA_INTERNAL_PORT},CONTROLLER://kafka:${KAFKA_CONTROLLER_PORT},PLAINTEXT_HOST://0.0.0.0:${KAFKA_EXTERNAL_PORT}'
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
     labels:
       - traefik.enable=true
-      - traefik.tcp.routers.kafka.rule=HostSNI(`${KAFKA_GATEWAY_URL}`)
+      - traefik.tcp.routers.kafka.rule=HostSNI(`*`)
       - traefik.tcp.routers.kafka.entrypoints=kafka
-      - traefik.tcp.routers.kafka.tls=true
-      - traefik.tcp.routers.kafka.tls.certresolver=lets-encrypt
-      - traefik.tcp.services.kafka.loadbalancer.server.port=${KAFKA_EXTERNAL_PORT}
+      - traefik.tcp.services.kafka.loadbalancer.server.port=kafka:${KAFKA_INTERNAL_PORT}
     healthcheck:
       test: kafka-topics --bootstrap-server=kafka:${KAFKA_INTERNAL_PORT} --list || exit 1
       interval: 5s
@@ -707,10 +752,8 @@ services:
       sh -c "mosquitto_passwd -b /mosquitto/config/passwd $MQTT_USER $MQTT_PASSWORD && exec /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf"
     labels:
       - traefik.enable=true
-      - traefik.tcp.routers.mosquitto.rule=HostSNI(`${MQTT_GATEWAY_URL}`)
+      - traefik.tcp.routers.mosquitto.rule=HostSNI(`*`)
       - traefik.tcp.routers.mosquitto.entrypoints=mqtt
-      - traefik.tcp.routers.mosquitto.tls=true
-      - traefik.tcp.routers.mosquitto.tls.certresolver=lets-encrypt
       - traefik.tcp.services.mosquitto.loadbalancer.server.port=${MQTT_PORT}
     networks:
       - kafka
@@ -726,6 +769,7 @@ volumes:
   kafka-schemas:
   kafka_connect_plugins:
   msc-data:
+  dtm-data:
     
 networks:
   keycloak:
@@ -735,4 +779,6 @@ networks:
   elk:
     driver: bridge
   kafka:
+    driver: bridge
+  digital-twin:
     driver: bridge
