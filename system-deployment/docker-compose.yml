@@ -403,7 +403,7 @@ services:
       - traefik.http.routers.digital-twin-management.tls.certresolver=lets-encrypt
       - traefik.http.middlewares.securityHeader.headers.sslredirect=true
       - traefik.http.routers.digital-twin-management.middlewares=securityHeader
-      - traefik.http.services.digital-twinv.loadbalancer.server.port=8080
+      - traefik.http.services.digital-twin.loadbalancer.server.port=8080
     depends_on:
       dtm-postgres-db:
         condition: service_healthy
