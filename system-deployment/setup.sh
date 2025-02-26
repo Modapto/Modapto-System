@@ -69,9 +69,9 @@ docker compose --profile proxy up -d traefik
 # Setup Keycloak to create the Client Secret
 echo "----------------------------------------------"
 echo "Setting up Keycloak and API Gateway to retrieve Client Token..."
-docker compose up -d postgres_db keycloak
+docker compose up -d postgres-db keycloak
 
 # Setup ELK Stack
 echo "----------------------------------------------"
 echo "Setting up ELK Stack..."
-docker compose up -d setup
+docker compose up setup-elk

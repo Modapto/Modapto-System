@@ -29,9 +29,9 @@ services:
   ###################################################
   # Access Control Component
   ###################################################
-  postgres_db:
+  postgres-db:
     image: postgres:${POSTGRES_SERVER_VERSION}
-    container_name: postgres_db
+    container_name: postgres-db
     restart: unless-stopped
     shm_size: 128mb
     env_file: .env
@@ -66,7 +66,7 @@ services:
       - KEYCLOAK_DATABASE_NAME=${KEYCLOAK_DB_DATABASE}
       - KEYCLOAK_DATABASE_USER=${KEYCLOAK_DB_USER}
       - KEYCLOAK_DATABASE_PASSWORD=${KEYCLOAK_DB_PASS}
-      - KEYCLOAK_DB_URL=jdbc:${KEYCLOAK_DB_VENDOR}://postgres_db:${KEYCLOAK_DB_PORT}/${KEYCLOAK_DB_DATABASE}
+      - KEYCLOAK_DB_URL=jdbc:${KEYCLOAK_DB_VENDOR}://postgres-db:${KEYCLOAK_DB_PORT}/${KEYCLOAK_DB_DATABASE}
       - KEYCLOAK_PROXY_MODE=edge
       - KEYCLOAK_HTTP_PORT=${KEYCLOAK_SERVER_PORT}
       - KEYCLOAK_HOSTNAME=${KEYCLOAK_GATEWAY_URL}
@@ -75,7 +75,7 @@ services:
     ports:
       - ${KEYCLOAK_EXPOSE_PORT}:${KEYCLOAK_SERVER_PORT}
     depends_on:
-      postgres_db:
+      postgres-db:
         condition: service_healthy
     labels:
       - traefik.enable=true
@@ -119,6 +119,7 @@ services:
       - GMAIL_USERNAME=${MAIL_USERNAME}
       - GMAIL_APP_PASSWORD=${MAIL_PASSWORD}
       - APP_FRONTEND_URL=${FRONTEND_URL}
+      - CORS_DOMAINS=https://${KEYCLOAK_GATEWAY_URL},https://${SERVICES_GATEWAY_URL},https://${DASHBOARD_GATEWAY_URL},https://${DIGITAL_TWIN_GATEWAY_URL},http://localhost:3000
     labels:
       - traefik.enable=true
       - traefik.http.routers.user-manager=true
@@ -140,8 +141,8 @@ services:
   ###################################################
   # Production Knowledge Base Component
   ###################################################
-  setup:
-    container_name: elasticsearch-setup
+  setup-elk:
+    container_name: setup-elk
     profiles:
       - setup
     build:
@@ -187,7 +188,7 @@ services:
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
       discovery.type: single-node
     healthcheck:
-      test: ["CMD-SHELL", "curl -fs -u ${ELASTIC_USERNAME}:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health?wait_for_status=yellow || exit 1"]
+      test: ["CMD-SHELL", "curl -fs -u ${ELASTIC_USERNAME}:${ELASTIC_PASSWORD} http://elasticsearch:9200/_cluster/health?wait_for_status=yellow || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -283,17 +284,18 @@ services:
       - USER_MANAGER_URL=http://user-manager:${AC_APP_PORT}
       - KAFKA_BROKERS_URL=kafka:${KAFKA_INTERNAL_PORT}
       - KAFKA_TOPICS=${KAFKA_MODAPTO_TOPICS}
+      - CORS_DOMAINS=https://${KEYCLOAK_GATEWAY_URL},https://${SERVICES_GATEWAY_URL},https://${DASHBOARD_GATEWAY_URL},https://${DIGITAL_TWIN_GATEWAY_URL},http://localhost:3000
     ports:
       - ${NC_APP_PORT}:${NC_APP_PORT}
     labels:
-        - traefik.enable=true
-        - traefik.http.routers.notification-center=true
-        - traefik.http.routers.notification-center.rule=Host(`${SERVICES_GATEWAY_URL}`) && (PathPrefix(`/api/events`) || PathPrefix(`/api/notification-center`) || PathPrefix(`/api/assignments`) || PathPrefix(`/api/notifications`))
-        - traefik.http.routers.notification-center.tls=true
-        - traefik.http.routers.notification-center.tls.certresolver=lets-encrypt
-        - traefik.http.middlewares.securityHeader.headers.sslredirect=true
-        - traefik.http.routers.notification-center.middlewares=securityHeader
-        - traefik.http.services.notification-center.loadbalancer.server.port=${NC_APP_PORT}
+      - traefik.enable=true
+      - traefik.http.routers.notification-center=true
+      - traefik.http.routers.notification-center.rule=Host(`${SERVICES_GATEWAY_URL}`) && (PathPrefix(`/api/events`) || PathPrefix(`/api/notification-center`) || PathPrefix(`/api/assignments`) || PathPrefix(`/api/notifications`))
+      - traefik.http.routers.notification-center.tls=true
+      - traefik.http.routers.notification-center.tls.certresolver=lets-encrypt
+      - traefik.http.middlewares.securityHeader.headers.sslredirect=true
+      - traefik.http.routers.notification-center.middlewares=securityHeader
+      - traefik.http.services.notification-center.loadbalancer.server.port=${NC_APP_PORT}
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -360,6 +362,11 @@ services:
     env_file: .env
     privileged: true
     environment:
+      - DTM_HOSTNAME=https://${DIGITAL_TWIN_GATEWAY_URL}
+      - DTMANAGEMENT_PORT=8080
+      - DTMANAGEMENT_EXTERNALPORT=${DTM_APP_PORT}
+      - DTMANAGEMENT_EXPOSEDTSVIACONTAINERNAME=true
+      - DTMANAGEMENT_USEPROXY=false
       - SPRING_H2_CONSOLE_ENABLED=false
       - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
       - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
@@ -386,12 +393,10 @@ services:
       - INTERNAL_SERVICE_DOCKER_REGISTRY_PASSWORD=${CONTAINER_REGISTRY_PASSWORD}
       - DTM_KAFKA_QUEUE_SIZE=100
       - DTM_KAFKA_THREAD_COUNT=1
-      - LOGGING_LEVEL_ROOT=trace
+      - LOGGING_LEVEL_ROOT=debug
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - "/tmp/modapto/dtm/data:/tmp/dt-context"
-      - ./dt-management/postgresql-42.7.5.jar:/app/postgresql-42.7.5.jar
-    entrypoint: ["java", "-cp", "/app/app.jar:/app/postgresql-42.7.5.jar", "org.springframework.boot.loader.launch.JarLauncher"]
     ports:
       - ${DTM_APP_PORT}:8080
       - ${DTM_BUS_EXTERNAL_PORT}:1873
@@ -472,6 +477,12 @@ services:
       - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
       - ELASTICSEARCH_USER=${ELASTIC_USERNAME}
       - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+      - KEYCLOAK_REALM_URL=${KEYCLOAK_ISSUER_URI}
+      - KEYCLOAK_CLIENT=${KEYCLOAK_CLIENT_ID}
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
+      - KAFKA_BROKERS_URL=kafka:${KAFKA_INTERNAL_PORT}
+      - KAFKA_TOPICS=${KAFKA_MODAPTO_TOPICS}
+      - CORS_DOMAINS=https://${KEYCLOAK_GATEWAY_URL},https://${SERVICES_GATEWAY_URL},https://${DASHBOARD_GATEWAY_URL},https://${DIGITAL_TWIN_GATEWAY_URL},http://localhost:3000
     ports:
       - ${EDS_APP_PORT}:${EDS_APP_PORT}
     labels:
