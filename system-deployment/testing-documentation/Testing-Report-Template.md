@@ -15,17 +15,20 @@ This document outlines the testing activities performed for the [Component Name]
 
 ## Test Environment
 
-- Testing Framework/Tools: [e.g., JUnit, Pytest, Selenium]
-
-- Network Configuration: [e.g., Localhost, Cloud Deployment]
+- Testing Framework/Tools: [e.g., JUnit, Pytest, SonarQube, Selenium, Lighthouse]
+- Testing Environment: [e.g., Localhost, Cloud Deployment]
+- Component version: [ e.g. 0.5 ] 
 
 
 ## Test Cases
 
-| # | Description | Component | Status (Pass/Fail) | 
+| # | Description / Endpoint | Component | Status (Pass/Fail) | 
 | -------------- | -- | -- | -- | 
-| 1 | publish events | Message Bus | Pass |
-| 2 | Store notifications | Production Knoledge Base | Pass |
+| 1 | Component APIs - Integration & Unit Tests | [Component Name] | Pass
+| 2 | publish events | Message Bus | Pass |
+| 3 | Store notifications | Production Knoledge Base | Pass |
+
+*Note: #1 has to do with the component itself, that is fully tested, e.g. with Postman as well to Unit & Integration Tests
 
 ## Issues Encountered
 
