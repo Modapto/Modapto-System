@@ -4,7 +4,6 @@
 
 This document outlines the testing activities performed for the Digital Twin Management. It details the environment, test cases, results, and any issues encountered during testing.
 
-
 ## Table of Contents
 
 1. [Test Environment](#test-environment)
@@ -19,12 +18,11 @@ This document outlines the testing activities performed for the Digital Twin Man
 - Testing Environment: multiple (local for unit tests, manual tests have been executed locally and on cloud deployment)
 - Component version: 0.5.0-SNAPSHOT (commit [1c1aa0c](https://github.com/Modapto/digital-twin-management/commit/1c1aa0cabf9ee216aca48cf413ec05da3245c465))
 
-
 ## Test Cases
 
-| # | Description / Endpoint | Component | Status (Pass/Fail) | 
-| -------------- | -- | -- | -- | 
-| 1 | Component APIs - Integration & Unit Tests | Digital Twin Management | Pass
+| # | Description / Endpoint | Component | Status (Pass/Fail) |
+| -------------- | -- | -- | -- |
+| 1 | Component APIs - Integration & Unit Tests | Digital Twin Management | Pass |
 | 2 | Create Module | Digital Twin Management | Pass |
 | 3 | Update Module | Digital Twin Management | Pass |
 | 4 | Delete Module | Digital Twin Management | Pass |
@@ -34,21 +32,17 @@ This document outlines the testing activities performed for the Digital Twin Man
 | 8 | Ensure Security | Digital Twin Management | Pass |
 | 8 | Kafka Events are produced correctly | Digital Twin Management | Pass |
 
-
 *Note: #1 has to do with the component itself, that is fully tested, e.g. with Postman as well to Unit & Integration Tests
 
 ## Issues Encountered
 
-| # | Description | Severity (Low/Medium/High) | Status (Open/Resolved) | 
-| -------------- | -- | -- | -- | 
-
+| # | Description | Severity (Low/Medium/High) | Status (Open/Resolved) |
+| -------------- | -- | -- | -- |
 
 ## Conclusion
+
 - Overall Component Status: Stable
 
 - Recommended Actions:
 
-
 ## Additional Notes
-
-
