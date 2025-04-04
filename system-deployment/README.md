@@ -22,7 +22,8 @@ MODAPTO System can be deployed via Docker and Docker Compose into a specified Ho
 1. [Installation](#installation)
 2. [Configuration](#configuration)
 3. [Deployment](#deployment)
-4. [Contributors](#contributors)
+4. [Testing Documentation](#testing-documentation)
+5. [Contributors](#contributors)
 
 ## Installation
 
@@ -122,6 +123,12 @@ To stop API Gateway:
 ```sh
 docker compose down traefik
 ```
+
+## Testing Documentation
+
+MODAPTO provides a comprehensive testing documentation process, including detailed test cases and reports. You can find the testing documentation in the [`testing-documentation`](../testing-documentation/) folder located in the root directory of this repository.
+
+This folder contains all necessary information to validate the deployment and functionality of the MODAPTO system.
 
 ## Contributors
 
