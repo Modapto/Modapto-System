@@ -25,8 +25,8 @@ This document outlines the testing activities performed for the Access Control c
 | -------------- | -- | -- | -- |
 | 1 | Component APIs - Integration & Unit Tests | Access Control | Pass |
 | 2 | Authenticating JWT | MODAPTO Components | Pass |
-| 3 | /api/users/ids/role/{userRole} | Notification Center | Pass |
-| 4 | /api/users/ids/pilot/{pilotCode} | Notification Center | Pass |
+| 3 | Retrieve userIds by User Role | Notification Center | Pass |
+| 4 | Retrieve userIds by Pilot Code | Notification Center | Pass |
 | 5 | Rate Limiting Test for REST calls | Access Control | Pass |
 | 6 | Security Tests via SonarQube | Access Control | Pass |
 
