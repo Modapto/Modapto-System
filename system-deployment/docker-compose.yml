@@ -502,7 +502,6 @@ services:
   ###################################################
   kafka:
     image: confluentinc/cp-kafka:${KAFKA_IMAGE_VERSION}
-    build: .
     hostname: kafka
     container_name: kafka
     restart: unless-stopped

@@ -373,54 +373,6 @@
       ],
       "modapto": [
         {
-          "id": "bbdc29da-fe2f-492f-bf6b-0dd3ea633ec5",
-          "name": "SHOP_FLOOR_MANAGER",
-          "description": "",
-          "composite": false,
-          "clientRole": true,
-          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
-          "attributes": {
-            "pilot_code": [
-              "SEW"
-            ],
-            "pilot_role": [
-              "USER"
-            ]
-          }
-        },
-        {
-          "id": "a6fc624a-08a8-4824-a996-a6ff4b72d029",
-          "name": "PRODUCTION_SCHEDULING_TEAM_MEMBER",
-          "description": "",
-          "composite": false,
-          "clientRole": true,
-          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
-          "attributes": {
-            "pilot_code": [
-              "SEW"
-            ],
-            "pilot_role": [
-              "USER"
-            ]
-          }
-        },
-        {
-          "id": "3e9bdee0-a827-4eae-b3b0-2ee9d585a922",
-          "name": "ROBOT_PROGRAMMER",
-          "description": "",
-          "composite": false,
-          "clientRole": true,
-          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
-          "attributes": {
-            "pilot_code": [
-              "FFT"
-            ],
-            "pilot_role": [
-              "USER"
-            ]
-          }
-        },
-        {
           "id": "30281ed2-fbcf-4449-98f3-345bb8fb3d9d",
           "name": "SUPER_ADMIN",
           "description": "",
@@ -437,102 +389,6 @@
           }
         },
         {
-          "id": "4b3416b0-1e8d-4f94-970d-4db69dc0e621",
-          "name": "PLANT_OPERATOR",
-          "description": "",
-          "composite": false,
-          "clientRole": true,
-          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
-          "attributes": {
-            "pilot_code": [
-              "FFT"
-            ],
-            "pilot_role": [
-              "ADMIN"
-            ]
-          }
-        },
-        {
-          "id": "bae28e18-12a7-48e2-ad91-8489eb4aade4",
-          "name": "ROBOT_SIMULATION_USER",
-          "description": "",
-          "composite": false,
-          "clientRole": true,
-          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
-          "attributes": {
-            "pilot_code": [
-              "FFT"
-            ],
-            "pilot_role": [
-              "USER"
-            ]
-          }
-        },
-        {
-          "id": "9b8359b1-bd52-469d-8a6a-de06dc3f26a3",
-          "name": "VIRTUAL_COMMISSIONING_ENGINEER",
-          "description": "",
-          "composite": false,
-          "clientRole": true,
-          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
-          "attributes": {
-            "pilot_code": [
-              "FFT"
-            ],
-            "pilot_role": [
-              "USER"
-            ]
-          }
-        },
-        {
-          "id": "34f1e82f-0b75-4244-adf0-a417914ec025",
-          "name": "AUTOMATION_MANAGER",
-          "description": "",
-          "composite": false,
-          "clientRole": true,
-          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
-          "attributes": {
-            "pilot_code": [
-              "ILTAR"
-            ],
-            "pilot_role": [
-              "ADMIN"
-            ]
-          }
-        },
-        {
-          "id": "db9b6f9d-c58b-4227-96db-1f20ee64c9c5",
-          "name": "DESIGN_EXPERT",
-          "description": "Role for pilot 'ILTAR' and pilot role of 'USER'",
-          "composite": false,
-          "clientRole": true,
-          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
-          "attributes": {
-            "pilot_code": [
-              "ILTAR"
-            ],
-            "pilot_role": [
-              "USER"
-            ]
-          }
-        },
-        {
-          "id": "8d207016-5732-4397-bec6-97c495b569eb",
-          "name": "PRODUCTION_SCHEDULER",
-          "description": "",
-          "composite": false,
-          "clientRole": true,
-          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
-          "attributes": {
-            "pilot_code": [
-              "ILTAR"
-            ],
-            "pilot_role": [
-              "USER"
-            ]
-          }
-        },
-        {
           "id": "4e89cab4-a43d-45b3-968b-6dcf653eddef",
           "name": "PLANT_MANAGER",
           "description": "",
@@ -542,24 +398,6 @@
           "attributes": {
             "pilot_code": [
               "SEW",
-              "ILTAR"
-            ],
-            "pilot_role": [
-              "ADMIN",
-              "ADMIN"
-            ]
-          }
-        },
-        {
-          "id": "be58eced-1ccf-43e0-b3be-5c209af1cc25",
-          "name": "PRODUCTION_MANAGER",
-          "description": "Role for pilot 'CRF' and pilot role of 'ADMIN'",
-          "composite": false,
-          "clientRole": true,
-          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
-          "attributes": {
-            "pilot_code": [
-              "CRF",
               "ILTAR"
             ],
             "pilot_role": [
