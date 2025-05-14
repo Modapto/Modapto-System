@@ -124,6 +124,8 @@ To stop API Gateway:
 docker compose down traefik
 ```
 
+***NOTE***: ELK stack operates under a free 30-day trial usage. After that period, users have to switch to the Basic License from Kibana UI. MODAPTO will still operate with the same functionalities with no additional effort or without any malfunction. To change the License of ELK, go to Kibana UI and search for "LICENSE" in the search field. Navigate to the single result and select to switch to default "Basic License". This step can be achieved also upon initialization of MODAPTO System.
+
 ## Testing Documentation
 
 MODAPTO provides a comprehensive testing documentation process, including detailed test cases and reports. You can find the testing documentation in the [`testing-documentation`](../testing-documentation/) folder located in the root directory of this repository.
