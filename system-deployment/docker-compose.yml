@@ -13,6 +13,7 @@ services:
       - "${KAFKA_EXTERNAL_PORT}:${KAFKA_EXTERNAL_PORT}"
       - "${MQTT_PORT}:${MQTT_PORT}"
       - "8888:8888"
+      - "1863:1863"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./api-gateway/config/traefik.toml:/traefik.toml
@@ -49,7 +50,11 @@ services:
       timeout: 10s
       retries: 20
       start_period: 10s
+    
+    labels:
+      - traefik.enable=false
     networks:
+      - modapto
       - keycloak
 
   keycloak:
@@ -105,17 +110,11 @@ services:
     env_file: .env
     environment:
       - SERVER_PORT=${AC_APP_PORT}
-      - KC_URL=${KEYCLOAK_URL}
-      - KC_ISSUER_URI=${KEYCLOAK_ISSUER_URI}
-      - KC_JWK_SET_URI=${KEYCLOAK_JWK_SET_URI}
-      - KC_TOKEN_URI=${KEYCLOAK_TOKEN_URI}
-      - KC_ADMIN_URI=${KEYCLOAK_ADMIN_URI}
-      - KC_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
-      - KC_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
-      - KC_ADMIN_USERNAME=${KEYCLOAK_ADMIN_USERNAME}
-      - KC_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
-      - KC_REALM=${KEYCLOAK_REALM}
-      - KC_AUTH_SERVER=${KEYCLOAK_AUTH_SERVER}
+      - APP_URL=https://${SERVICES_GATEWAY_URL}
+      - KEYCLOAK_URL=${KEYCLOAK_URL}
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM}
       - GMAIL_USERNAME=${MAIL_USERNAME}
       - GMAIL_APP_PASSWORD=${MAIL_PASSWORD}
       - APP_FRONTEND_URL=${FRONTEND_URL}
@@ -126,6 +125,7 @@ services:
       - traefik.http.routers.user-manager.rule=Host(`${SERVICES_GATEWAY_URL}`) && (PathPrefix(`/api/users`) || PathPrefix(`/api/user-manager`) || PathPrefix(`/api/admin`))
       - traefik.http.routers.user-manager.tls=true
       - traefik.http.routers.user-manager.tls.certresolver=lets-encrypt
+      - traefik.http.routers.user-manager.entrypoints=websecure
       - traefik.http.middlewares.securityHeader.headers.sslredirect=true
       - traefik.http.routers.user-manager.middlewares=securityHeader
       - traefik.http.services.user-manager.loadbalancer.server.port=${AC_APP_PORT}
@@ -164,6 +164,8 @@ services:
       HEARTBEAT_INTERNAL_PASSWORD: ${HEARTBEAT_INTERNAL_PASSWORD:-}
       MONITORING_INTERNAL_PASSWORD: ${MONITORING_INTERNAL_PASSWORD:-}
       BEATS_SYSTEM_PASSWORD: ${BEATS_SYSTEM_PASSWORD:-}
+    labels:
+      - traefik.enable=false
     networks:
       - elk
     depends_on:
@@ -188,7 +190,7 @@ services:
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
       discovery.type: single-node
     healthcheck:
-      test: ["CMD-SHELL", "curl -fs -u ${ELASTIC_USERNAME}:${ELASTIC_PASSWORD} http://elasticsearch:9200/_cluster/health?wait_for_status=yellow || exit 1"]
+      test: ["CMD-SHELL", "curl -fs -u ${ELASTIC_USERNAME}:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health?wait_for_status=yellow || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -223,6 +225,7 @@ services:
       - traefik.http.routers.logstash=true
       - traefik.http.routers.logstash.rule=Host(`${LOGSTASH_GATEWAY_URL}`)
       - traefik.http.routers.logstash.tls=true
+      - traefik.http.routers.logstash.entrypoints=websecure
       - traefik.http.routers.logstash.tls.certresolver=lets-encrypt
       - traefik.http.middlewares.securityHeader.headers.sslredirect=true
       - traefik.http.routers.logstash.middlewares=securityHeader
@@ -253,6 +256,7 @@ services:
       - traefik.http.routers.kibana=true
       - traefik.http.routers.kibana.rule=Host(`${KIBANA_GATEWAY_URL}`)
       - traefik.http.routers.kibana.tls=true
+      - traefik.http.routers.kibana.entrypoints=websecure
       - traefik.http.routers.kibana.tls.certresolver=lets-encrypt
       - traefik.http.middlewares.securityHeader.headers.sslredirect=true
       - traefik.http.routers.kibana.middlewares=securityHeader
@@ -275,6 +279,8 @@ services:
     env_file: .env
     environment:
       - SERVER_PORT=${NC_APP_PORT}
+      - APP_URL=https://${SERVICES_GATEWAY_URL}
+      - PILOT_CASE=${PILOT_CASE}
       - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
       - ELASTIC_USERNAME=${ELASTIC_USERNAME}
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
@@ -290,8 +296,9 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.routers.notification-center=true
-      - traefik.http.routers.notification-center.rule=Host(`${SERVICES_GATEWAY_URL}`) && (PathPrefix(`/api/events`) || PathPrefix(`/api/notification-center`) || PathPrefix(`/api/assignments`) || PathPrefix(`/api/notifications`))
+      - traefik.http.routers.notification-center.rule=Host(`${SERVICES_GATEWAY_URL}`) && (PathPrefix(`/api/events`) || PathPrefix(`/api/notification-center`) || PathPrefix(`/api/assignments`) || PathPrefix(`/notifications`) || PathPrefix(`/api/notifications`))
       - traefik.http.routers.notification-center.tls=true
+      - traefik.http.routers.notification-center.entrypoints=websecure
       - traefik.http.routers.notification-center.tls.certresolver=lets-encrypt
       - traefik.http.middlewares.securityHeader.headers.sslredirect=true
       - traefik.http.routers.notification-center.middlewares=securityHeader
@@ -301,8 +308,6 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
-      kafka-setup:
-        condition: service_completed_successfully
     networks:
       - modapto
 
@@ -322,6 +327,7 @@ services:
       - traefik.http.routers.user-interface.rule=Host(`${DASHBOARD_GATEWAY_URL}`)
       - traefik.http.routers.user-interface.tls=true
       - traefik.http.routers.user-interface.tls.certresolver=lets-encrypt
+      - traefik.http.routers.user-interface.entrypoints=websecure
       - traefik.http.middlewares.securityHeader.headers.sslredirect=true
       - traefik.http.routers.user-interface.middlewares=securityHeader
       - traefik.http.services.user-interface.loadbalancer.server.port=80
@@ -346,6 +352,7 @@ services:
       - traefik.http.routers.orchestrator-with-service-catalogue.rule=Host(`${SERVICES_GATEWAY_URL}`) && (PathPrefix(`/micro-service-controller-rest`) || PathPrefix(`/catalog`))
       - traefik.http.routers.orchestrator-with-service-catalogue.tls=true
       - traefik.http.routers.orchestrator-with-service-catalogue.tls.certresolver=lets-encrypt
+      - traefik.http.routers.orchestrator-with-service-catalogue.entrypoints=websecure
       - traefik.http.middlewares.securityHeader.headers.sslredirect=true
       - traefik.http.routers.orchestrator-with-service-catalogue.middlewares=securityHeader
       - traefik.http.services.orchestrator-with-service-catalogue.loadbalancer.server.port=8080
@@ -362,11 +369,15 @@ services:
     env_file: .env
     privileged: true
     environment:
-      - DTM_HOSTNAME=https://${DIGITAL_TWIN_GATEWAY_URL}
+      - DTMANAGEMENT_HOSTNAME=https://${DIGITAL_TWIN_GATEWAY_URL}
       - DTMANAGEMENT_PORT=8080
-      - DTMANAGEMENT_EXTERNALPORT=${DTM_APP_PORT}
-      - DTMANAGEMENT_EXPOSEDTSVIACONTAINERNAME=true
-      - DTMANAGEMENT_USEPROXY=false
+      - DTMANAGEMENT_EXTERNALPORT=-1
+      - DTMANAGEMENT_EXPOSEDTSVIACONTAINERNAME=false
+      - DTMANAGEMENT_USEPROXY=true
+      - DTMANAGEMENT_SECURITY_SECUREPROXYDTS=true
+      - DT_DEPLOYMENT_DOCKER_RESTARTPOLICY=unless-stopped
+      - DT_DEPLOYMENT_DOCKER_MODULECONTAINERPREFIX=modapto-module-
+      - DT_DEPLOYMENT_DOCKER_SERVICECONTAINERPREFIX=smart-service-
       - SPRING_H2_CONSOLE_ENABLED=false
       - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
       - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
@@ -374,26 +385,32 @@ services:
       - SPRING_DATASOURCE_USERNAME=${DTM_POSTGRES_USER}
       - SPRING_DATASOURCE_PASSWORD=${DTM_POSTGRES_PASSWORD}
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-      - logging.level.org.postgresql=INFO
-      - dt-management.deployment.type=DOCKER
-      - DT_DEFAULT_DEPLOYMENT_TYPE=DOCKER
-      - logging.level.root=INFO
-      - DTM_EVENTS_MQTT_HOST=0.0.0.0
-      - DTM_EVENTS_MQTT_PORT=1873
-      - DT_MOUNT_DIR=/tmp/modapto/dtm/data
-      - SERVICE_CATALOG_URL=http://orchestrator-with-service-catalogue:8080
-      - MESSAGEBUS_KAFKA_URL=kafka:${KAFKA_INTERNAL_PORT}
+      - DTMANAGEMENT_DEPLOYMENT_TYPE=DOCKER
+      - DTMANAGEMENT_EVENTS_MQTT_HOST=0.0.0.0
+      - DTMANAGEMENT_EVENTS_MQTT_PORT=1873
+      - DT_DEPLOYMENT_DOCKER_TMPDIRHOSTMAPPING=/tmp/modapto/dtm/data
+      - MODAPTO_SERVICECATALOGUE_HOST=http://orchestrator-with-service-catalogue:8080
+      - MODAPTO_MESSAGEBUS_URL=kafka:${KAFKA_INTERNAL_PORT}
       - DOCKER_HOST=unix:///var/run/docker.sock
-      - DT_DOCKER_REGISTRY_URL=${CONTAINER_REGISTRY}
-      - DT_DOCKER_REGISTRY_USERNAME=${CONTAINER_REGISTRY_USERNAME}
-      - DT_DOCKER_REGISTRY_PASSWORD=${CONTAINER_REGISTRY_PASSWORD}
-      - DT_DOCKER_IMAGE=${DT_APP_IMAGE}
+      - DTMANAGEMENT_DOCKER_REGISTRY_URL=${CONTAINER_REGISTRY}
+      - DTMANAGEMENT_DOCKER_REGISTRY_USERNAME=${CONTAINER_REGISTRY_USERNAME}
+      - DTMANAGEMENT_DOCKER_REGISTRY_PASSWORD=${CONTAINER_REGISTRY_PASSWORD}
+      - DTMANAGEMENT_DOCKER_CONTAINER_NAME=digital-twin-management
+      - DTMANAGEMENT_DOCKER_NETWORK=modapto
+      - DT_DEPLOYMENT_DOCKER_IMAGE=${DT_APP_IMAGE}
       - INTERNAL_SERVICE_DOCKER_REGISTRY_URL=${CONTAINER_REGISTRY}
       - INTERNAL_SERVICE_DOCKER_REGISTRY_USERNAME=${CONTAINER_REGISTRY_USERNAME}
       - INTERNAL_SERVICE_DOCKER_REGISTRY_PASSWORD=${CONTAINER_REGISTRY_PASSWORD}
       - DTM_KAFKA_QUEUE_SIZE=100
       - DTM_KAFKA_THREAD_COUNT=1
       - LOGGING_LEVEL_ROOT=debug
+      - DTMANAGEMENT_INCLUDEDOCKERLOGS=false
+      - LOGGING_LEVEL_EU_MODAPTO_DIGITALTWINMANAGEMENT=DEBUG
+      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB=INFO
+      - LOGGING_LEVEL_ORG_POSTGRESQL=INFO
+      - SPRING_JPA_PROPERTIES_ECLIPSELINK_LOGGING_LEVEL=WARNING
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUERURI=${KEYCLOAK_ISSUER_URI}
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI=${KEYCLOAK_JWK_SET_URI}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - "/tmp/modapto/dtm/data:/tmp/dt-context"
@@ -405,6 +422,7 @@ services:
       - traefik.http.routers.digital-twin-management=true
       - traefik.http.routers.digital-twin-management.rule=Host(`${DIGITAL_TWIN_GATEWAY_URL}`)
       - traefik.http.routers.digital-twin-management.tls=true
+      - traefik.http.routers.digital-twin-management.entrypoints=websecure
       - traefik.http.routers.digital-twin-management.tls.certresolver=lets-encrypt
       - traefik.http.middlewares.securityHeader.headers.sslredirect=true
       - traefik.http.routers.digital-twin-management.middlewares=securityHeader
@@ -436,6 +454,8 @@ services:
       timeout: 10s
       retries: 20
       start_period: 10s
+    labels:
+      - traefik.enable=false
     networks:
       - digital-twin
 
@@ -457,6 +477,7 @@ services:
       - traefik.http.routers.eds-frontend=true
       - traefik.http.routers.eds-frontend.rule=Host(`fvt.modapto.atc.gr`)
       - traefik.http.routers.eds-frontend.tls=true
+      - traefik.http.routers.eds-frontend.entrypoints=websecure
       - traefik.http.routers.eds-frontend.tls.certresolver=lets-encrypt
       - traefik.http.middlewares.securityHeader.headers.sslredirect=true
       - traefik.http.routers.eds-frontend.middlewares=securityHeader
@@ -491,6 +512,7 @@ services:
       - traefik.http.routers.eds-backend.rule=Host(`${SERVICES_GATEWAY_URL}`) && PathPrefix(`/api/eds`)
       - traefik.http.routers.eds-backend.tls=true
       - traefik.http.routers.eds-backend.tls.certresolver=lets-encrypt
+      - traefik.http.routers.eds-backend.entrypoints=websecure
       - traefik.http.middlewares.securityHeader.headers.sslredirect=true
       - traefik.http.routers.eds-backend.middlewares=securityHeader
       - traefik.http.services.eds-backend.loadbalancer.server.port=${EDS_APP_PORT}
@@ -570,6 +592,7 @@ services:
       - traefik.http.routers.kafka-ui.rule=Host(`${KAFKA_UI_GATEWAY_URL}`)
       - traefik.http.routers.kafka-ui.tls=true
       - traefik.http.routers.kafka-ui.tls.certresolver=lets-encrypt
+      - traefik.http.routers.kafka-ui.entrypoints=websecure
       - traefik.http.middlewares.securityHeader.headers.sslredirect=true
       - traefik.http.routers.kafka-ui.middlewares=securityHeader
       - traefik.http.services.kafka-ui.loadbalancer.server.port=8080
@@ -607,6 +630,7 @@ services:
       - traefik.http.routers.rest-proxy.rule=Host(`${KAFKA_RP_GATEWAY_URL}`)
       - traefik.http.routers.rest-proxy.tls=true
       - traefik.http.routers.rest-proxy.tls.certresolver=lets-encrypt
+      - traefik.http.routers.rest-proxy.entrypoints=websecure
       - traefik.http.middlewares.securityHeader.headers.sslredirect=true
       - traefik.http.routers.rest-proxy.middlewares=securityHeader
       - traefik.http.services.rest-proxy.loadbalancer.server.port=${RP_EXTERNAL_PORT}
@@ -635,6 +659,8 @@ services:
       SCHEMA_REGISTRY_OPTS: -Djava.security.auth.login.config=/conf/schema_registry.jaas
       SCHEMA_REGISTRY_SCHEMA_REGISTRY_INTER_INSTANCE_PROTOCOL: "http"
       SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: INFO
+    labels:
+      - traefik.enable=false
     networks:
       - kafka
       - modapto
@@ -659,6 +685,8 @@ services:
       KAFKA_LISTENERS: 'PLAINTEXT://kafka-setup:29092'
       CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
     restart: no
+    labels:
+      - traefik.enable=false
     command: |
       bash -c '
         /usr/local/bin/kafka-init-topics.sh
@@ -715,6 +743,8 @@ services:
         condition: service_healthy
       mosquitto:
         condition: service_healthy
+    labels:
+      - traefik.enable=false
     command:
       - bash
       - -c
@@ -764,7 +794,7 @@ services:
       - traefik.enable=true
       - traefik.tcp.routers.mosquitto.rule=HostSNI(`*`)
       - traefik.tcp.routers.mosquitto.entrypoints=mqtt
-      - traefik.tcp.services.mosquitto.loadbalancer.server.port=${MQTT_PORT}
+      - traefik.tcp.services.mosquitto.loadbalancer.server.address=${MQTT_PORT}
     networks:
       - kafka
       - modapto
