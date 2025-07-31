@@ -17,6 +17,8 @@ topics=(
     "modapto-module-creation"
     "modapto-module-deletion"
     "modapto-module-update"
+    "smart-service-assigned"
+    "smart-service-unassigned"
     "smart-service-invoke"
     "smart-service-finish"
     "modapto-mqtt-topics"
