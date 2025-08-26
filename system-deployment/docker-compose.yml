@@ -269,6 +269,25 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  elk-pyworker:
+    container_name: elk-pyworker
+    build:
+      context: ./production-knowledge-base/python-worker
+    networks:
+      - elk
+      - modapto
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      KAFKA_URL: kafka.modapto.atc.gr:9092
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      PYTHONUNBUFFERED: 1
+    command: python script.py
+
   ###################################################
   # Notification Center Component
   ###################################################
@@ -291,6 +310,7 @@ services:
       - KAFKA_BROKERS_URL=kafka:${KAFKA_INTERNAL_PORT}
       - KAFKA_TOPICS=${KAFKA_MODAPTO_TOPICS}
       - CORS_DOMAINS=https://${KEYCLOAK_GATEWAY_URL},https://${SERVICES_GATEWAY_URL},https://${DASHBOARD_GATEWAY_URL},https://${DIGITAL_TWIN_GATEWAY_URL},http://localhost:3000
+      - KAFKA_GROUP=modapto-notification-center
     ports:
       - ${NC_APP_PORT}:${NC_APP_PORT}
     labels:
@@ -504,6 +524,7 @@ services:
       - KAFKA_BROKERS_URL=kafka:${KAFKA_INTERNAL_PORT}
       - KAFKA_TOPICS=${KAFKA_MODAPTO_TOPICS}
       - CORS_DOMAINS=https://${KEYCLOAK_GATEWAY_URL},https://${SERVICES_GATEWAY_URL},https://${DASHBOARD_GATEWAY_URL},https://${DIGITAL_TWIN_GATEWAY_URL},http://localhost:3000
+      - KAFKA_GROUP=modapto-evaluation-and-decision-support
     ports:
       - ${EDS_APP_PORT}:${EDS_APP_PORT}
     labels:

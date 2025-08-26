@@ -6,10 +6,6 @@ echo "----------------------------------------------"
 
 # Create topics
 topics=(
-    "self-awareness-diagnosis"
-    "self-awareness-detection"
-    "predictive-maintenance"
-    "process-drift"
     "production-schedule-update"
     "delivery-delay"
     "production-schema-registration"
@@ -19,6 +15,8 @@ topics=(
     "modapto-module-update"
     "smart-service-invoke"
     "smart-service-finish"
+    "smart-service-assigned"
+    "smart-service-unassigned"
     "modapto-mqtt-topics"
 )
 
