@@ -6,7 +6,15 @@ echo "----------------------------------------------"
 
 # Create topics
 topics=(
-    "production-schedule-update"
+    "self-awareness-monitor-kpis"
+    "self-awareness-real-time-monitoring"
+    "grouping-predictive-maintenance"
+    "threshold-predictive-maintenance"
+    "process-drift"
+    "production-schedule-optimization"
+    "production-schedule-optimization"
+    "kh-picking-sequence-optimization"
+    "kh-picking-sequence-simulation"
     "delivery-delay"
     "production-schema-registration"
     "smart-service-event"
@@ -17,8 +25,6 @@ topics=(
     "smart-service-unassigned"
     "smart-service-invoke"
     "smart-service-finish"
-    "smart-service-assigned"
-    "smart-service-unassigned"
     "modapto-mqtt-topics"
 )
 
