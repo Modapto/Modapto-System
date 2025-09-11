@@ -399,7 +399,7 @@ curl -f http://localhost:8080/health
 MODAPTO is the result of a collaborative effort bringing together leading European research institutions, technology companies, and industrial partners:
 
 - **Athens Technology Center (ATC)**
-- **Fraunhofer Gesellschaft IOSB**
+- **Fraunhofer IOSB**
 - **Université de Lorraine (UL)**
 - **University of Piraeus Research Center (UPRC)**
 - **Athens University of Economics and Business (AUEB)**
