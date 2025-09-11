@@ -12,7 +12,7 @@ topics=(
     "threshold-predictive-maintenance"
     "process-drift"
     "production-schedule-optimization"
-    "production-schedule-optimization"
+    "production-schedule-simulation"
     "kh-picking-sequence-optimization"
     "kh-picking-sequence-simulation"
     "delivery-delay"
