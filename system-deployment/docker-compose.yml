@@ -13,7 +13,6 @@ services:
       - "${KAFKA_EXTERNAL_PORT}:${KAFKA_EXTERNAL_PORT}"
       - "${MQTT_PORT}:${MQTT_PORT}"
       - "8888:8888"
-      - "1863:1863"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./api-gateway/config/traefik.toml:/traefik.toml
@@ -58,7 +57,7 @@ services:
       - keycloak
 
   keycloak:
-    image: bitnami/keycloak:${KEYCLOAK_SERVER_VERSION}
+    image: ghcr.io/modapto/identity-provider:latest
     container_name: keycloak
     restart: unless-stopped
     env_file: .env
@@ -91,6 +90,12 @@ services:
       - traefik.http.middlewares.securityHeader.headers.sslredirect=true
       - traefik.http.routers.keycloak.middlewares=securityHeader
       - traefik.http.services.keycloak.loadbalancer.server.port=${KEYCLOAK_SERVER_PORT}
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
     healthcheck:
       test: ["CMD-SHELL", "curl --fail --silent ${KEYCLOAK_ISSUER_TEST_URI} || exit 1"]
       interval: 10s
@@ -283,10 +288,21 @@ services:
     env_file: .env
     environment:
       ELASTICSEARCH_URL: http://elasticsearch:9200
-      KAFKA_URL: kafka.modapto.atc.gr:9092
+      KAFKA_URL: kafka:29092
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       PYTHONUNBUFFERED: 1
+      FRONTEND_ORIGIN: https://${EDS_GATEWAY_URL}
+      RUN_MODE: both
     command: python script.py
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.elk-pyworker=true
+      - traefik.http.routers.elk-pyworker.rule=Host(`${PYWORKER_GATEWAY_URL}`)
+      - traefik.http.routers.elk-pyworker.entrypoints=websecure
+      - traefik.http.routers.elk-pyworker.tls.certresolver=lets-encrypt
+      - traefik.http.middlewares.securityHeader.headers.sslredirect=true
+      - traefik.http.routers.elk-pyworker.middlewares=securityHeader
+      - traefik.http.services.elk-pyworker.loadbalancer.server.port=5000
 
   ###################################################
   # Notification Center Component
@@ -362,6 +378,11 @@ services:
     container_name: orchestrator-with-service-catalogue
     restart: unless-stopped
     env_file: .env
+    environment:
+      - OSC_KEYCLOAK_URL=https://${KEYCLOAK_GATEWAY_URL}
+      - OSC_KEYCLOAK_REALM=${KEYCLOAK_REALM}
+      - OSC_KEYCLOAK_CLIENT=${KEYCLOAK_CLIENT_ID}
+      - OSC_KEYCLOAK_SECRET=${KEYCLOAK_CLIENT_SECRET}
     volumes:
       - msc-data:/opt/msc-data/
     ports:
@@ -389,6 +410,12 @@ services:
     env_file: .env
     privileged: true
     environment:
+      - MODAPTO_DT_OPERATION_INPUT_VALIDATION=REQUIRE_PRESENT_OR_DEFAULT
+      - MODAPTO_DT_OPERATION_OUTPUT_VALIDATION=NONE
+      - DT_LOGLEVEL_FAAAST=TRACE
+      - DT_LOGLEVEL_EXTERNAL=DEBUG
+      - DT_LOGGING_SHOWSTACKTRACE=true
+      - CORS_ORIGINS=https://${KEYCLOAK_GATEWAY_URL},https://${SERVICES_GATEWAY_URL},https://${DASHBOARD_GATEWAY_URL},https://${DIGITAL_TWIN_GATEWAY_URL},http://localhost:3000,http://localhost:8090,http://localhost:4200,https://${EDS_GATEWAY_URL},
       - DTMANAGEMENT_HOSTNAME=https://${DIGITAL_TWIN_GATEWAY_URL}
       - DTMANAGEMENT_PORT=8080
       - DTMANAGEMENT_EXTERNALPORT=-1
@@ -483,7 +510,7 @@ services:
   # Evaluation Decision Support Component
   ###################################################
   eds-frontend:
-    image: stellamarkop/eds:evaluation0
+    image: ghcr.io/modapto/eds-front:latest
     restart: unless-stopped
     container_name: eds-frontend
     ports:
@@ -492,6 +519,11 @@ services:
       - SERV_HOST=https://${SERVICES_GATEWAY_URL}
       - SOCKET_HOST=https://fvt.modapto.atc.gr #server base IP for Socket.io; adjust the IP url according your host environment. Server runs under nginx proxy pass(thats why port is 4200)- we have configured in Angular to request Socket under /server subdomain.
       - KEYCLOAK_URL=https://fvt.aegisresearch.eu
+      - API_USERNAME=${EDS_EMAIL}
+      - API_PASSWORD=${EDS_PASSWORD}
+      - AUTH_HOST=https://${SERVICES_GATEWAY_URL}
+      - PY_HOST=https://${PYWORKER_GATEWAY_URL}
+      - DTM_HOST=https://${DIGITAL_TWIN_GATEWAY_URL}
     labels:
       - traefik.enable=true
       - traefik.http.routers.eds-frontend=true
@@ -515,6 +547,8 @@ services:
     env_file: .env
     environment:
       - SERVER_PORT=${EDS_APP_PORT}
+      - APP_URL=https://${SERVICES_GATEWAY_URL}
+      - APP_LOG_LEVEL=DEBUG
       - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
       - ELASTICSEARCH_USER=${ELASTIC_USERNAME}
       - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
@@ -522,7 +556,7 @@ services:
       - KEYCLOAK_CLIENT=${KEYCLOAK_CLIENT_ID}
       - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
       - KAFKA_BROKERS_URL=kafka:${KAFKA_INTERNAL_PORT}
-      - KAFKA_TOPICS=${KAFKA_MODAPTO_TOPICS}
+      - KAFKA_TOPICS=${KAFKA_EDS_TOPICS}
       - CORS_DOMAINS=https://${KEYCLOAK_GATEWAY_URL},https://${SERVICES_GATEWAY_URL},https://${DASHBOARD_GATEWAY_URL},https://${DIGITAL_TWIN_GATEWAY_URL},http://localhost:3000
       - KAFKA_GROUP=modapto-evaluation-and-decision-support
     ports:
@@ -530,7 +564,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.routers.eds-backend=true
-      - traefik.http.routers.eds-backend.rule=Host(`${SERVICES_GATEWAY_URL}`) && PathPrefix(`/api/eds`)
+      - traefik.http.routers.eds-backend.rule=Host(`${SERVICES_GATEWAY_URL}`) && (PathPrefix(`/api/eds`) || PathPrefix(`/eds/websocket`))
       - traefik.http.routers.eds-backend.tls=true
       - traefik.http.routers.eds-backend.tls.certresolver=lets-encrypt
       - traefik.http.routers.eds-backend.entrypoints=websecure
@@ -569,9 +603,11 @@ services:
       KAFKA_PROCESS_ROLES: 'broker,controller'
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:${KAFKA_CONTROLLER_PORT}'
-      KAFKA_LISTENERS: 'PLAINTEXT://kafka:${KAFKA_INTERNAL_PORT},CONTROLLER://kafka:${KAFKA_CONTROLLER_PORT},PLAINTEXT_HOST://0.0.0.0:${KAFKA_EXTERNAL_PORT}'
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093,PLAINTEXT_HOST://0.0.0.0:9092'
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_MESSAGE_MAX_BYTES: 50000000          # 50 MB
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 50000000    # match or exceed message.max.bytes
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
     labels:
       - traefik.enable=true
@@ -728,9 +764,10 @@ services:
       CONNECT_BOOTSTRAP_SERVERS: kafka:${KAFKA_INTERNAL_PORT}
       CONNECT_PRODUCER_BOOTSTRAP_SERVERS: kafka:${KAFKA_INTERNAL_PORT}
       CONNECT_CONSUMER_BOOTSTRAP_SERVERS: kafka:${KAFKA_INTERNAL_PORT}
+      TARGET_KAFKA_BOOTSTRAP_SERVERS: "kafka:29092"
       CONNECT_PRODUCER_SECURITY_PROTOCOL: PLAINTEXT
       CONNECT_CONSUMER_SECURITY_PROTOCOL: PLAINTEXT
-      CONNECT_REST_ADVERTISED_HOST_NAME: localhost
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
       CONNECT_REST_PORT: ${KC_EXTERNAL_PORT}
       CONNECT_GROUP_ID: modapto-mqtt-connector
       CONNECT_CONFIG_STORAGE_TOPIC: modapto-kafka-connect-configs
@@ -747,9 +784,15 @@ services:
       CONNECT_TOPIC_CREATION_ENABLE: 'true'
       CONNECT_TOPIC_CREATION_DEFAULT_PARTITIONS: 6
       CONNECT_TOPIC_CREATION_DEFAULT_REPLICATION_FACTOR: 1
+      CONNECT_CONNECTOR_CLIENT_CONFIG_OVERRIDE_POLICY: All
+      CONNECT_REPLICATION_POLICY_CLASS: org.apache.kafka.connect.mirror.DefaultReplicationPolicy
+      CONNECT_REPLICATION_POLICY_SEPARATOR: ""
       CONNECT_PLUGIN_PATH: '/usr/share/java,/usr/share/confluent-hub-components'
       CONNECT_CONFIG_PROVIDERS: 'env'
       CONNECT_CONFIG_PROVIDERS_ENV_CLASS: 'org.apache.kafka.common.config.provider.EnvVarConfigProvider'
+      CONNECT_PRODUCER_MAX_REQUEST_SIZE: 50000000
+      CONNECT_PRODUCER_BUFFER_MEMORY: 67108864
+      CONNECT_CONSUMER_MAX_PARTITION_FETCH_BYTES: 50000000
       MQTT_USER: ${MQTT_USER}
       MQTT_PASSWORD: ${MQTT_PASSWORD}
       MQTT_URL: tcp://mosquitto:1883

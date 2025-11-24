@@ -8,18 +8,20 @@
         "mqtt.password": "${env:MQTT_PASSWORD}",
         "mqtt.connection.timeout": 30,
         "mqtt.keep.alive": 60,
-        "mqtt.connection.clean": false,
-        "mqtt.clean.session.enabled": false,
+        "mqtt.connection.clean": true,
+        "mqtt.clean.session.enabled": true,
         "mqtt.topics": "self-awareness-monitor-kpis,self-awareness-real-time-monitoring,grouping-predictive-maintenance,threshold-predictive-maintenance,process-drift,production-schedule-optimization,production-schedule-simulation,kh-picking-sequence-optimization,kh-picking-sequence-simulation,delivery-delay,production-schema-registration,smart-service-event,modapto-module-creation,modapto-module-deletion,modapto-module-update,smart-service-assigned,smart-service-unassigned,smart-service-invoke,smart-service-finish",
         "mqtt.kafka.topic.map": "self-awareness-monitor-kpis:self-awareness-monitor-kpis,self-awareness-real-time-monitoring:self-awareness-real-time-monitoring,grouping-predictive-maintenance:grouping-predictive-maintenance,threshold-predictive-maintenance:threshold-predictive-maintenance,process-drift:process-drift,production-schedule-optimization:production-schedule-optimization,production-schedule-simulation:production-schedule-simulation,kh-picking-sequence-optimization:kh-picking-sequence-optimization,kh-picking-sequence-simulation:kh-picking-sequence-simulation,delivery-delay:delivery-delay,production-schema-registration:production-schema-registration,smart-service-event:smart-service-event,modapto-module-creation:modapto-module-creation,modapto-module-deletion:modapto-module-deletion,modapto-module-update:modapto-module-update,smart-service-assigned:smart-service-assigned,smart-service-unassigned:smart-service-unassigned,smart-service-invoke:smart-service-invoke,smart-service-finish:smart-service-finish",
         "kafka.topic": "modapto-mqtt-topics",
         "mqtt.qos": 1,
-        "value.converter": "org.apache.kafka.connect.converters.ByteArrayConverter",
-        "value.converter.schemas.enable": false,
         "topic.creation.enable": true,
-        "confluent.topic.bootstrap.servers": "${env:CONNECT_BOOTSTRAP_SERVERS}",
+        "value.converter": "org.apache.kafka.connect.converters.ByteArrayConverter",
+        "confluent.topic.bootstrap.servers": "kafka:29092",
         "confluent.topic.replication.factor": 1,
         "topic.creation.default.replication.factor": 1,
-        "topic.creation.default.partitions": 6
+        "topic.creation.default.partitions": 6,
+        "topic.creation.default.max.message.bytes": 50000000,
+        "producer.max.request.size": "50000000",
+        "producer.buffer.memory": "67108864"
     }
 }

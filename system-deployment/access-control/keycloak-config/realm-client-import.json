@@ -373,18 +373,130 @@
       ],
       "modapto": [
         {
-          "id": "30281ed2-fbcf-4449-98f3-345bb8fb3d9d",
-          "name": "SUPER_ADMIN",
+          "id": "9b8359b1-bd52-469d-8a6a-de06dc3f26a3",
+          "name": "VIRTUAL_COMMISSIONING_ENGINEER",
           "description": "",
           "composite": false,
           "clientRole": true,
           "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
           "attributes": {
-            "pilot_code": [
-              "ALL"
-            ],
             "pilot_role": [
-              "SUPER_ADMIN"
+              "USER"
+            ],
+            "pilot_code": [
+              "FFT"
+            ]
+          }
+        },
+        {
+          "id": "9081c14a-7bbc-449c-b173-e6aa36602783",
+          "name": "LOGISTICS_USER",
+          "description": "Role for pilot 'CRF' and pilot role of 'USER'",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
+            "pilot_role": [
+              "USER"
+            ],
+            "pilot_code": [
+              "CRF"
+            ]
+          }
+        },
+        {
+          "id": "34f1e82f-0b75-4244-adf0-a417914ec025",
+          "name": "AUTOMATION_MANAGER",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
+            "pilot_role": [
+              "ADMIN"
+            ],
+            "pilot_code": [
+              "ILTAR"
+            ]
+          }
+        },
+        {
+          "id": "bbdc29da-fe2f-492f-bf6b-0dd3ea633ec5",
+          "name": "SHOP_FLOOR_MANAGER",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
+            "pilot_role": [
+              "USER"
+            ],
+            "pilot_code": [
+              "SEW"
+            ]
+          }
+        },
+        {
+          "id": "a6fc624a-08a8-4824-a996-a6ff4b72d029",
+          "name": "PRODUCTION_SCHEDULING_TEAM_MEMBER",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
+            "pilot_role": [
+              "USER"
+            ],
+            "pilot_code": [
+              "SEW"
+            ]
+          }
+        },
+        {
+          "id": "db9b6f9d-c58b-4227-96db-1f20ee64c9c5",
+          "name": "DESIGN_EXPERT",
+          "description": "Role for pilot 'ILTAR' and pilot role of 'USER'",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
+            "pilot_role": [
+              "USER"
+            ],
+            "pilot_code": [
+              "ILTAR"
+            ]
+          }
+        },
+        {
+          "id": "8d207016-5732-4397-bec6-97c495b569eb",
+          "name": "PRODUCTION_SCHEDULER",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
+            "pilot_role": [
+              "USER"
+            ],
+            "pilot_code": [
+              "ILTAR"
+            ]
+          }
+        },
+        {
+          "id": "ef4c8779-25d8-4b0c-acda-cb3ae0586be7",
+          "name": "PRODUCTION_USER",
+          "description": "Role for pilot 'CRF' and pilot role of 'USER'",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
+            "pilot_role": [
+              "USER"
+            ],
+            "pilot_code": [
+              "CRF"
             ]
           }
         },
@@ -396,13 +508,30 @@
           "clientRole": true,
           "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
           "attributes": {
-            "pilot_code": [
-              "SEW",
-              "ILTAR"
-            ],
             "pilot_role": [
               "ADMIN",
               "ADMIN"
+            ],
+            "pilot_code": [
+              "SEW",
+              "ILTAR"
+            ]
+          }
+        },
+        {
+          "id": "be58eced-1ccf-43e0-b3be-5c209af1cc25",
+          "name": "PRODUCTION_MANAGER",
+          "description": "Role for pilot 'CRF' and pilot role of 'ADMIN'",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
+            "pilot_role": [
+              "ADMIN"
+            ],
+            "pilot_code": [
+              "CRF",
+              "ILTAR"
             ]
           }
         },
@@ -414,13 +543,29 @@
           "clientRole": true,
           "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
           "attributes": {
-            "pilot_code": [
-              "CRF",
-              "ILTAR"
-            ],
             "pilot_role": [
               "ADMIN",
               "ADMIN"
+            ],
+            "pilot_code": [
+              "CRF",
+              "ILTAR"
+            ]
+          }
+        },
+        {
+          "id": "3e9bdee0-a827-4eae-b3b0-2ee9d585a922",
+          "name": "ROBOT_PROGRAMMER",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
+            "pilot_role": [
+              "USER"
+            ],
+            "pilot_code": [
+              "FFT"
             ]
           }
         },
@@ -432,11 +577,59 @@
           "clientRole": true,
           "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
           "attributes": {
-            "pilot_code": [
-              "FFT"
-            ],
             "pilot_role": [
               "ADMIN"
+            ],
+            "pilot_code": [
+              "FFT"
+            ]
+          }
+        },
+        {
+          "id": "7190f989-25bc-4c5c-828c-65a3010316bd",
+          "name": "MYROLE",
+          "description": "Role for pilot 'FFT' and pilot role of 'USER'",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
+            "pilot_role": [
+              "USER"
+            ],
+            "pilot_code": [
+              "FFT"
+            ]
+          }
+        },
+        {
+          "id": "30281ed2-fbcf-4449-98f3-345bb8fb3d9d",
+          "name": "SUPER_ADMIN",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
+            "pilot_role": [
+              "SUPER_ADMIN"
+            ],
+            "pilot_code": [
+              "ALL"
+            ]
+          }
+        },
+        {
+          "id": "4b3416b0-1e8d-4f94-970d-4db69dc0e621",
+          "name": "PLANT_OPERATOR",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
+            "pilot_role": [
+              "ADMIN"
+            ],
+            "pilot_code": [
+              "FFT"
             ]
           }
         },
@@ -448,11 +641,75 @@
           "clientRole": true,
           "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
           "attributes": {
+            "pilot_role": [
+              "USER"
+            ],
+            "pilot_code": [
+              "SEW"
+            ]
+          }
+        },
+        {
+          "id": "537732e8-6ca3-43b5-8fd5-893a7605532d",
+          "name": "PLANT_OPERATOR_TEST",
+          "description": "Role for pilot 'FFT' and pilot role of 'ADMIN'",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
+            "pilot_role": [
+              "ADMIN"
+            ],
+            "pilot_code": [
+              "FFT"
+            ]
+          }
+        },
+        {
+          "id": "7099d304-1f3a-4cd1-bf33-3e5855ed3063",
+          "name": "INNOVATION_ENGINEER",
+          "description": "Role for pilot 'SEW' and pilot role of 'USER'",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
             "pilot_code": [
               "SEW"
             ],
             "pilot_role": [
               "USER"
+            ]
+          }
+        },
+        {
+          "id": "a486d415-2b72-4890-969d-821e5639318c",
+          "name": "SUPPORT_TECHNIQUE",
+          "description": "Role for pilot 'SEW' and pilot role of 'USER'",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
+            "pilot_code": [
+              "SEW"
+            ],
+            "pilot_role": [
+              "USER"
+            ]
+          }
+        },
+        {
+          "id": "bae28e18-12a7-48e2-ad91-8489eb4aade4",
+          "name": "ROBOT_SIMULATION_USER",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
+            "pilot_role": [
+              "USER"
+            ],
+            "pilot_code": [
+              "FFT"
             ]
           }
         },
@@ -464,11 +721,27 @@
           "clientRole": true,
           "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
           "attributes": {
-            "pilot_code": [
-              "SEW"
-            ],
             "pilot_role": [
               "USER"
+            ],
+            "pilot_code": [
+              "SEW"
+            ]
+          }
+        },
+        {
+          "id": "203f8b3b-7370-4092-85ed-b53b0d2b6ac4",
+          "name": "QUALITY_INSPECTOR",
+          "description": "Role for pilot 'CRF' and pilot role of 'USER'",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "bb1dd96e-87ff-4726-9cac-3ab7499a8f53",
+          "attributes": {
+            "pilot_role": [
+              "USER"
+            ],
+            "pilot_code": [
+              "CRF"
             ]
           }
         }
@@ -597,7 +870,6 @@
           "PRODUCTION_MANAGER",
           "LOGISTICS_USER",
           "LOGISTICS_MANAGER",
-          "GUEST",
           "PRODUCTION_USER",
           "QUALITY_INSPECTOR"
         ]
@@ -636,8 +908,6 @@
           "VIRTUAL_COMMISSIONING_ENGINEER",
           "ROBOT_PROGRAMMER",
           "PROCESS_ENGINEER",
-          "MYROLE",
-          "TEST123",
           "PLANT_OPERATOR",
           "PLANT_OPERATOR_TEST",
           "ROBOT_SIMULATION_USER"
@@ -1032,7 +1302,8 @@
       "protocol": "openid-connect",
       "attributes": {
         "access.token.lifespan": "1800",
-        "client.secret.creation.time": "1734098127",
+        "client.secret.creation.time": "1741349659",
+        "post.logout.redirect.uris": "+",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
         "use.refresh.tokens": "true",
@@ -2008,14 +2279,14 @@
         "subComponents": {},
         "config": {
           "allowed-protocol-mapper-types": [
-            "oidc-usermodel-property-mapper",
-            "oidc-address-mapper",
-            "oidc-full-name-mapper",
-            "oidc-sha256-pairwise-sub-mapper",
-            "saml-user-attribute-mapper",
-            "saml-role-list-mapper",
             "saml-user-property-mapper",
-            "oidc-usermodel-attribute-mapper"
+            "oidc-address-mapper",
+            "oidc-usermodel-property-mapper",
+            "oidc-full-name-mapper",
+            "saml-role-list-mapper",
+            "saml-user-attribute-mapper",
+            "oidc-usermodel-attribute-mapper",
+            "oidc-sha256-pairwise-sub-mapper"
           ]
         }
       },
@@ -2066,14 +2337,14 @@
         "subComponents": {},
         "config": {
           "allowed-protocol-mapper-types": [
-            "oidc-sha256-pairwise-sub-mapper",
+            "oidc-address-mapper",
             "saml-role-list-mapper",
             "oidc-full-name-mapper",
-            "saml-user-property-mapper",
-            "saml-user-attribute-mapper",
-            "oidc-usermodel-attribute-mapper",
+            "oidc-sha256-pairwise-sub-mapper",
             "oidc-usermodel-property-mapper",
-            "oidc-address-mapper"
+            "saml-user-attribute-mapper",
+            "saml-user-property-mapper",
+            "oidc-usermodel-attribute-mapper"
           ]
         }
       },

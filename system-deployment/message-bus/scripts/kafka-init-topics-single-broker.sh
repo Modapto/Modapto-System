@@ -8,6 +8,7 @@ echo "----------------------------------------------"
 topics=(
     "self-awareness-monitor-kpis"
     "self-awareness-real-time-monitoring"
+    "self-awareness-wear-detection"
     "grouping-predictive-maintenance"
     "threshold-predictive-maintenance"
     "process-drift"
@@ -39,6 +40,8 @@ for topic in "${topics[@]}"; do
             --partitions 6 \
             --replication-factor 1 \
             --if-not-exists \
+            --config max.message.bytes=50000000 \
+            --config retention.ms=604800000 \
             --bootstrap-server kafka:29092; then
             echo "Successfully created topic: $topic"
             echo "----------------------------------------------"

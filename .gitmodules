@@ -1,9 +1,6 @@
 [submodule "user-interface"]
 	path = user-interface
 	url = https://github.com/Modapto/user-interface.git
-[submodule "digital-twin"]
-	path = digital-twin
-	url = https://github.com/Modapto/digital-twin.git
 [submodule "digital-twin-management"]
 	path = digital-twin-management
 	url = https://github.com/Modapto/digital-twin-management.git
