@@ -68,7 +68,7 @@ services:
       
       # Database config
       - KC_DB=postgres  # postgresql
-      - KC_DB_URL=jdbc:postgresql://postgres_db:${KEYCLOAK_DB_PORT}/${KEYCLOAK_DB_DATABASE}
+      - KC_DB_URL=jdbc:postgresql://postgres-db:${KEYCLOAK_DB_PORT}/${KEYCLOAK_DB_DATABASE}
       - KC_DB_USERNAME=${KEYCLOAK_DB_USER}
       - KC_DB_PASSWORD=${KEYCLOAK_DB_PASS}
       
@@ -91,7 +91,7 @@ services:
     ports:
       - ${KEYCLOAK_EXPOSE_PORT}:${KEYCLOAK_SERVER_PORT}
     depends_on:
-      postgres_db:
+      postgres-db:
         condition: service_healthy
     volumes:
       - ./access-control/keycloak-config/:/opt/keycloak/data/import
