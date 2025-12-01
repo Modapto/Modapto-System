@@ -61,6 +61,7 @@ services:
     container_name: identity-provider
     restart: unless-stopped
     command: start
+    env_file: .env
     environment:
       # Admin credentials
       - KC_BOOTSTRAP_ADMIN_USERNAME=${KEYCLOAK_ADMIN_USER}
